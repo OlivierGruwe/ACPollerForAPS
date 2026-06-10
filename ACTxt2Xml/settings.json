@@ -1,0 +1,16 @@
+{
+  "TxtToXml": {
+    "SourceFolder": "C:\\Data\\A",
+    "TargetFolder": "C:\\Data\\B",
+    "PollingIntervalSeconds": 30,
+    "FileFilter": "*.txt",
+    "StableCheckMs": 1000
+  },
+  "XmlToTxt": {
+    "SourceFolder": "C:\\Data\\C",
+    "TargetFolder": "C:\\Data\\D",
+    "PollingIntervalSeconds": 30,
+    "FileFilter": "*.xml",
+    "StableCheckMs": 1000
+  }
+}
