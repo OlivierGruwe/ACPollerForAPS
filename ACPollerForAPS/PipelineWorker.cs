@@ -29,6 +29,7 @@ namespace ConversionService
         private readonly ManualResetEventSlim _pauseGate = new ManualResetEventSlim(true);
         private CancellationTokenSource _cts;
         private readonly ProviderRegistry _providers;
+        private readonly PendingStore _pending;
 
         public PipelineWorker(PipelineSettings settings)
             : this(settings, new ProviderRegistry()) { }
@@ -37,6 +38,12 @@ namespace ConversionService
         {
             _s = settings;
             _providers = providers ?? new ProviderRegistry();
+            // dossier d'attente de transfert : sous ArchiveFolder/pending, ou à
+            // défaut à côté du dossier d'entrée.
+            var baseDir = !string.IsNullOrWhiteSpace(_s.ArchiveFolder)
+                ? _s.ArchiveFolder
+                : (_s.InputFolder ?? ".");
+            _pending = new PendingStore(System.IO.Path.Combine(baseDir, "pending"));
         }
 
         public void Start()
@@ -104,6 +111,10 @@ namespace ConversionService
         /// <summary>Un passage de merge : scan, routage, agrégation, écriture, archivage.</summary>
         public void RunOnce(CancellationToken token)
         {
+            // 1) d'abord : retenter les fichiers en attente de transfert (livraisons
+            //    précédemment échouées), avant tout nouveau traitement.
+            RetryPending(token);
+
             if (string.IsNullOrWhiteSpace(_s.InputFolder) || !Directory.Exists(_s.InputFolder))
             {
                 Log.Warn("{0}: dossier d'entrée absent, passage ignoré.", Name);
@@ -164,7 +175,7 @@ namespace ConversionService
             }
 
             // génère les sorties par canal, découpées en lots de BatchSize
-            int channelsOk = 0, channelsFailed = 0, delivered = 0, outputsWritten = 0;
+            int channelsOk = 0, channelsFailed = 0, delivered = 0, outputsWritten = 0, pendedOutputs = 0;
             foreach (var kv in byChannel)
             {
                 if (token.IsCancellationRequested) return;
@@ -183,18 +194,18 @@ namespace ConversionService
                     batchNo++;
                     try
                     {
-                        WriteChannelOutput(ch, batch, runId, batchNo, totalBatches, token);
-                        // archive les sources de CE lot seulement si son dépôt a réussi
+                        bool deliveredNow = WriteChannelOutput(ch, batch, runId, batchNo, totalBatches, token);
+                        // le contenu est sécurisé (déposé OU mis en attente) : on archive les sources
                         foreach (var f in batch) Archive(f);
-                        delivered += batch.Count;
-                        outputsWritten++;
-                        Log.Info("{0}: [run {1}] canal '{2}' lot {3}/{4} -> {5} fichier(s) déposé(s) et archivé(s).",
-                            Name, runId, ch.Name, batchNo, totalBatches, batch.Count);
+                        if (deliveredNow) { delivered += batch.Count; outputsWritten++; }
+                        else { pendedOutputs++; channelHadFailure = true; }
                     }
                     catch (Exception ex)
                     {
+                        // échec RARE : même la mise en attente a échoué -> on NE archive
+                        // PAS (les sources restent en entrée, retraitées au prochain passage).
                         channelHadFailure = true;
-                        Log.Error(ex, "{0}: [run {1}] canal '{2}' lot {3}/{4} : échec dépôt, {5} source(s) conservée(s) (retry).",
+                        Log.Error(ex, "{0}: [run {1}] canal '{2}' lot {3}/{4} : génération/mise en attente impossible, {5} source(s) conservée(s).",
                             Name, runId, ch.Name, batchNo, totalBatches, batch.Count);
                     }
                 }
@@ -205,13 +216,14 @@ namespace ConversionService
             sw.Stop();
             // résumé de fin de passage — la ligne à lire d'un coup d'œil
             var summary = string.Format(
-                "[run {0}] terminé en {1} ms — {2} fichier(s) source déposé(s) en {3} sortie(s), sur {4} canal(aux) OK / {5} en échec | ignorés(non prêts)={6} | erreurs lecture={7} routage={8} sans-canal={9}",
-                runId, sw.ElapsedMilliseconds, delivered, outputsWritten,
+                "[run {0}] terminé en {1} ms — {2} fichier(s) source traité(s) en {3} sortie(s) déposée(s), {4} sortie(s) en attente de transfert | canaux OK={5} en échec={6} | ignorés(non prêts)={7} | erreurs lecture={8} routage={9} sans-canal={10}",
+                runId, sw.ElapsedMilliseconds, delivered, outputsWritten, pendedOutputs,
                 channelsOk, channelsFailed, notReady, readErrors, routeErrors, noChannel);
             Log.Info("{0}: {1}", Name, summary);
 
             // événement de supervision Windows : gravité selon les incidents du passage
-            int problems = channelsFailed + readErrors + routeErrors + noChannel;
+            // (une sortie en attente de transfert compte comme une anomalie)
+            int problems = channelsFailed + readErrors + routeErrors + noChannel + pendedOutputs;
             if (problems > 0)
                 EventLogWriter.Warn(
                     "Passage terminé avec des anomalies. " + summary,
@@ -220,6 +232,48 @@ namespace ConversionService
                 EventLogWriter.Info(
                     "Passage OK. " + summary,
                     EventLogWriter.EvtRunSummary);
+        }
+
+        /// <summary>
+        /// Retente le dépôt des fichiers en attente de transfert. Ceux qui
+        /// passent quittent la file ; les autres y restent pour le prochain essai.
+        /// </summary>
+        private void RetryPending(CancellationToken token)
+        {
+            List<PendingItem> items;
+            try { items = _pending.List().ToList(); }
+            catch (Exception ex) { Log.Warn(ex, "{0}: lecture de la file d'attente impossible.", Name); return; }
+
+            if (items.Count == 0) return;
+            Log.Info("{0}: {1} fichier(s) en attente de transfert à retenter.", Name, items.Count);
+
+            int redelivered = 0, stillPending = 0;
+            foreach (var item in items)
+            {
+                if (token.IsCancellationRequested) return;
+                _pauseGate.Wait(token);
+                try
+                {
+                    var content = File.ReadAllBytes(item.Path);
+                    TransportRunner.DeliverWithRetry(item.Meta.Channel, item.Meta.FileName, content, token);
+                    _pending.Remove(item);
+                    redelivered++;
+                    Log.Info("{0}: attente -> déposé '{1}' (canal '{2}').",
+                        Name, item.Meta.FileName, item.Meta.ChannelName);
+                }
+                catch (Exception ex)
+                {
+                    stillPending++;
+                    Log.Warn(ex, "{0}: '{1}' toujours en attente de transfert (canal '{2}').",
+                        Name, item.Meta.FileName, item.Meta.ChannelName);
+                }
+            }
+            Log.Info("{0}: file d'attente — {1} redéposé(s), {2} encore en attente.",
+                Name, redelivered, stillPending);
+            if (stillPending > 0)
+                EventLogWriter.Warn(
+                    string.Format("File d'attente de transfert : {0} fichier(s) toujours non livré(s).", stillPending),
+                    EventLogWriter.EvtDeliveryFailed);
         }
 
         /// <summary>Découpe une liste en lots de taille max batchSize (0 = un seul lot).</summary>
@@ -236,7 +290,14 @@ namespace ConversionService
             return result;
         }
 
-        private void WriteChannelOutput(OutputChannel ch, List<string> files,
+        /// <summary>
+        /// Génère la sortie du lot, puis tente le dépôt. Si le dépôt échoue après
+        /// ses tentatives, le fichier généré est mis en ATTENTE DE TRANSFERT (il
+        /// sera redéposé au prochain passage). Dans les deux cas la génération a
+        /// réussi et le contenu est sécurisé, donc les sources sont archivables.
+        /// Retourne true si déposé, false si mis en attente.
+        /// </summary>
+        private bool WriteChannelOutput(OutputChannel ch, List<string> files,
             string runId, int batchNo, int totalBatches, CancellationToken token)
         {
             // résout le provider du canal ("mapping" par défaut, ou une DLL plugin)
@@ -250,10 +311,23 @@ namespace ConversionService
             // nom de fichier de sortie, avec le numéro de lot pour éviter l'écrasement
             var fileName = BuildFileName(ch, batchNo, totalBatches);
 
-            // dépôt via le transport du canal (FS / FTPS / S3), avec retry.
-            TransportRunner.DeliverWithRetry(ch, fileName, result.Content, token);
-            Log.Info("{0}: [run {1}] déposé '{2}' via {3} (provider '{4}')", Name, runId, fileName,
-                (ch.Transport?.Type ?? "Fs"), ch.Provider ?? "mapping");
+            try
+            {
+                // dépôt via le transport du canal (FS / FTPS / S3), avec retry.
+                TransportRunner.DeliverWithRetry(ch, fileName, result.Content, token);
+                Log.Info("{0}: [run {1}] déposé '{2}' via {3} (provider '{4}')", Name, runId, fileName,
+                    (ch.Transport?.Type ?? "Fs"), ch.Provider ?? "mapping");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                // dépôt impossible : on met le fichier GÉNÉRÉ en attente de transfert.
+                // (peut lever si même l'écriture en attente échoue -> propagée)
+                Log.Warn(ex, "{0}: [run {1}] dépôt de '{2}' échoué, mise en attente de transfert.",
+                    Name, runId, fileName);
+                _pending.Save(ch, fileName, result.Content);
+                return false;
+            }
         }
 
         // ---- nom du fichier de sortie (jetons) ----

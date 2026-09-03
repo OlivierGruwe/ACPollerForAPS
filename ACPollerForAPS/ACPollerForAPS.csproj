@@ -58,6 +58,7 @@
     </Compile>
     <Compile Include="EventLogWriter.cs" />
     <Compile Include="OutputTransport.cs" />
+    <Compile Include="PendingStore.cs" />
     <Compile Include="ProviderLoader.cs" />
     <Compile Include="PipelineWorker.cs" />
     <Compile Include="Program.cs" />

@@ -102,8 +102,13 @@ only when a line node equals a value; otherwise the cell is empty.</p>
 Refresh paths re-scans the sample XML. Validate (toolbar) checks the whole config.</p>
 
 <h2 id="transport">Output transports</h2>
-<p>Each channel delivers via a transport, with configurable retry. On failure after
-all attempts, sources are not archived and are retried next run.</p>
+<p>Each channel delivers via a transport, with configurable retry. If delivery fails
+after all attempts, the generated file is moved to a pending queue
+(<code>pending/&lt;channel&gt;/</code>) and the sources are archived normally — nothing
+is lost. At the start of every run, before new files, the service retries the queued
+deliveries, so a failed delivery is completed automatically as soon as the server is
+reachable again. Pending deliveries appear in the run summary and as a warning in the
+Windows Event Log.</p>
 <h3>FS</h3><p>File written to the channel Output folder.</p>
 <h3>FTPS</h3>
 <table>

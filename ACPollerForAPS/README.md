@@ -124,8 +124,13 @@ Each channel delivers its file via a transport:
 - **S3**: via the AWS SDK, standard AWS endpoint OR a custom one (MinIO /
   S3-compatible, with path-style access).
 
-Configurable retry (count + delay). If it fails after all attempts, the sources are
-not archived (retry on the next run).
+Configurable retry (count + delay). If delivery fails after all attempts, the
+generated file is moved to a **pending queue** (`pending/<channel>/`) and the sources
+are archived normally — nothing is lost. At the start of every run, before new files,
+the service retries the queued deliveries, so a failed delivery is retried
+automatically and completed as soon as the server is reachable again (the exact file
+generated, in chronological order). Pending deliveries appear in the run summary and
+as a warning in the Windows Event Log.
 
 ### Credential security
 
@@ -219,6 +224,9 @@ Debug in NLog.config for detailed diagnostics (no recompilation).
   dropdown must not overwrite Path on load).
 - **FTPS/S3 secret cannot be decrypted** → encrypted on a machine other than the
   service's (DPAPI machine scope).
+- **Files stuck in `pending/`** → delivery keeps failing (server unreachable, bad
+  credentials). Files are safe and retried each run; check the transport settings
+  and the Event Log.
 
 ---
 
