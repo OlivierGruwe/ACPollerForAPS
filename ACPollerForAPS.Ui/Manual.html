@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<style type="text/css">
+  body { font-family: Segoe UI, Arial, sans-serif; font-size: 13px; color: #2b2f33; line-height: 1.5; margin: 0; padding: 16px; }
+  h1 { color: #5B6770; font-size: 22px; margin: 0 0 4px 0; }
+  .sub { color: #29ABE2; font-size: 13px; margin-bottom: 18px; }
+  h2 { color: #ffffff; background: #29ABE2; font-size: 15px; padding: 5px 9px; margin: 22px 0 10px 0; }
+  h3 { color: #29ABE2; font-size: 14px; margin: 16px 0 5px 0; }
+  h4 { color: #5B6770; font-size: 12.5px; margin: 12px 0 3px 0; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0; }
+  th { background: #29ABE2; color: #fff; text-align: left; padding: 4px 7px; font-size: 12px; }
+  td { border: 1px solid #D4DADE; padding: 3px 7px; font-size: 12px; vertical-align: top; }
+  code { background: #F0F2F4; padding: 1px 3px; font-family: Consolas, monospace; font-size: 12px; color: #c7254e; }
+  pre { background: #F7F9FA; border: 1px solid #D4DADE; border-left: 3px solid #29ABE2; padding: 8px; font-family: Consolas, monospace; font-size: 12px; white-space: pre-wrap; }
+  blockquote { border-left: 3px solid #29ABE2; margin: 8px 0; padding: 5px 11px; background: #F4F6F8; color: #5B6770; }
+  .nav { background: #F4F6F8; border: 1px solid #D4DADE; padding: 8px 12px; margin-bottom: 16px; }
+  .nav a { color: #29ABE2; text-decoration: none; margin-right: 14px; font-size: 12px; }
+</style></head><body>
+
+<h1>ACPollerForAPS</h1>
+<div class="sub">Invoice pipeline &mdash; routing, mapping and delivery &mdash; User Manual</div>
+
+<div class="nav">
+  <a href="#intro">Concepts</a>
+  <a href="#general">General</a>
+  <a href="#channel">Channel</a>
+  <a href="#mapping">Mapping</a>
+  <a href="#transport">Transports</a>
+  <a href="#providers">Providers</a>
+  <a href="#ops">Operations</a>
+</div>
+
+<h2 id="intro">Concepts</h2>
+<p>ACPollerForAPS converts invoices exported from APS (ReadSoft) into the format
+each destination ERP expects, and delivers them where the ERP imports them. Single
+input format (APS XML), multiple outputs depending on the Buyer.</p>
+<p>Pipeline (per scheduled run): scan the input folder &rarr; route each file to a
+channel by Buyer &rarr; merge files of the same channel &rarr; convert (CSV/XML via
+the provider) &rarr; deliver (FS/FTPS/S3) &rarr; archive sources only if delivery
+succeeded.</p>
+<p>The service and the UI share a single <code>settings.json</code>
+(<code>{ "Pipeline": { ... } }</code>). The service reads it at startup.</p>
+<blockquote>After a change through the UI, restart the service so it picks up the new
+configuration.</blockquote>
+
+<h2 id="general">General tab</h2>
+<table>
+<tr><th>Field</th><th>Meaning</th></tr>
+<tr><td>Input folder</td><td>Folder watched for incoming APS XML files.</td></tr>
+<tr><td>Archive folder</td><td>Where processed files go (dated) after successful delivery.</td></tr>
+<tr><td>Error folder</td><td>Where unroutable/unreadable files go for review.</td></tr>
+<tr><td>Archiving enabled</td><td>If off, sources are deleted instead of archived.</td></tr>
+<tr><td>File filter</td><td>Which files to pick up (e.g. *.xml).</td></tr>
+<tr><td>Stability check (ms)</td><td>Delay to confirm a file is fully written.</td></tr>
+<tr><td>Record path</td><td>XPath to one invoice, e.g. /InvoiceData.</td></tr>
+<tr><td>Buyer path</td><td>XPath (relative to record) to the value selecting the channel.</td></tr>
+</table>
+
+<h3>Schedule</h3>
+<p>Run interval (minutes or hours). Each run processes everything present.</p>
+<blockquote>A 24h interval means one run per day; for testing, set a few minutes.</blockquote>
+
+<h2 id="channel">Configuring a channel</h2>
+<table>
+<tr><th>Field</th><th>Meaning</th></tr>
+<tr><td>Channel name / Enabled</td><td>Label; a disabled channel is ignored.</td></tr>
+<tr><td>Buyers (semicolon)</td><td>Buyer values routed to this channel.</td></tr>
+<tr><td>Output format</td><td>Csv or Xml.</td></tr>
+<tr><td>Output folder / file name</td><td>Destination and name. Tokens: {date} {time} {guid} {batch}.</td></tr>
+<tr><td>Record path / Lines path</td><td>Invoice and repeating accounting lines location.</td></tr>
+<tr><td>Provider</td><td>"mapping" (default) or a plugin DLL name.</td></tr>
+<tr><td>Sample XML</td><td>Sample input stored in the config; feeds preview and Path suggestions.</td></tr>
+<tr><td>Invoices per file</td><td>Max invoices per output file. 0 = one merged file. E.g. 5 with 30 invoices = 6 files of 5.</td></tr>
+</table>
+
+<h2 id="mapping">Field mapping</h2>
+<table>
+<tr><th>Property</th><th>Meaning</th></tr>
+<tr><td>Name</td><td>Output column / element name.</td></tr>
+<tr><td>Type</td><td>text; amount (decimals, Abs drops sign); date (Date in = input format).</td></tr>
+<tr><td>Source</td><td>fixed = constant (Value); header/xpath = invoice node (Path); line = current accounting line node (Path).</td></tr>
+<tr><td>Value / Path</td><td>Constant (fixed) / XPath (others). Path suggestions filtered by Source.</td></tr>
+<tr><td>Dec. / Abs</td><td>Decimals / absolute value for amounts.</td></tr>
+<tr><td>Date in</td><td>Input date format.</td></tr>
+<tr><td>Only when (path) / equals</td><td>Conditional write (see below).</td></tr>
+</table>
+
+<h3>Conditional mapping (Vendor / Ledger)</h3>
+<p>Some formats (Dynamics AX) produce one Vendor line (vendor credit) and N Ledger
+lines (debits) per invoice, with different columns per line type. A field is written
+only when a line node equals a value; otherwise the cell is empty.</p>
+<table>
+<tr><th>Column</th><th>Only when (path)</th><th>equals</th></tr>
+<tr><td>Credit</td><td>PostingType</td><td>Credit</td></tr>
+<tr><td>Debit</td><td>PostingType</td><td>Debit</td></tr>
+<tr><td>Vendor control account</td><td>PostingType</td><td>Credit</td></tr>
+</table>
+
+<h3>Preview</h3>
+<p>Load a Sample XML in the channel, then click Preview to see the generated output.
+Refresh paths re-scans the sample XML. Validate (toolbar) checks the whole config.</p>
+
+<h2 id="transport">Output transports</h2>
+<p>Each channel delivers via a transport, with configurable retry. On failure after
+all attempts, sources are not archived and are retried next run.</p>
+<h3>FS</h3><p>File written to the channel Output folder.</p>
+<h3>FTPS</h3>
+<table>
+<tr><th>Field</th><th>Meaning</th></tr>
+<tr><td>Host / Port</td><td>Server; 21 explicit / 990 implicit.</td></tr>
+<tr><td>Remote folder</td><td>Target folder (created if missing).</td></tr>
+<tr><td>Username / Password</td><td>Password stored encrypted (leave empty to keep current).</td></tr>
+<tr><td>FTPS mode</td><td>Explicit (FTPES) or Implicit.</td></tr>
+<tr><td>Validate certificate</td><td>Verify TLS certificate (off only for test servers).</td></tr>
+</table>
+<h3>S3 / S3-compatible</h3>
+<table>
+<tr><th>Field</th><th>Meaning</th></tr>
+<tr><td>Bucket / Key prefix</td><td>Target bucket; optional logical folder.</td></tr>
+<tr><td>Region / Endpoint</td><td>AWS region, or custom endpoint for MinIO/compatible.</td></tr>
+<tr><td>Path-style access</td><td>Required by MinIO.</td></tr>
+<tr><td>Access key / Secret key</td><td>Secret stored encrypted.</td></tr>
+</table>
+<blockquote>Credentials are encrypted with DPAPI (machine scope). Encrypt on the
+target machine (the one running the service); a secret encrypted elsewhere cannot be
+decrypted there.</blockquote>
+
+<h2 id="providers">ERP Providers (plugins)</h2>
+<p>Hybrid model. Default "mapping" covers most ERPs with no DLL. For specific logic,
+ship a DLL implementing <code>IErpExporter</code> in the <code>providers/</code>
+folder next to the service exe; set the channel Provider to its name. The service
+discovers it at startup (a broken DLL is logged and ignored).</p>
+<pre>public interface IErpExporter
+{
+    IEnumerable&lt;string&gt; ProviderNames { get; }
+    ExportResult Export(IEnumerable&lt;string&gt; inputXmls, OutputChannel channel);
+}</pre>
+<p>Steps: new class library (.NET 4.8) referencing ACPollerForAPS.Core &rarr;
+implement IErpExporter &rarr; fill result.Content &rarr; compile &rarr; drop the DLL in
+providers/ &rarr; set Provider to its name. No service recompilation. See PROVIDERS.md
+for the full guide.</p>
+
+<h2 id="ops">Operations</h2>
+<h3>Logs</h3>
+<p>NLog writes to <code>logs/</code> next to the service exe, with daily + size
+rotation and purge. Each run logs a start line, per-file detail and a summary. Set
+the level to Debug in NLog.config for diagnostics, then back to Info.</p>
+
+<h3>Monitoring (Windows Event Log)</h3>
+<p>The service reports to a dedicated Windows event log <code>ACPollerForAPS</code>
+(Event Viewer &rarr; Applications and Services Logs). Business events (start/stop,
+per-run summary) plus all warnings/errors, graded by severity. Any enterprise monitor
+(Nagios, Zabbix, Centreon) reads it natively.</p>
+<table>
+<tr><th>ID</th><th>Severity</th><th>Meaning</th></tr>
+<tr><td>1000 / 1001</td><td>Information</td><td>Service started / stopped</td></tr>
+<tr><td>1100</td><td>Information</td><td>Run completed OK (summary)</td></tr>
+<tr><td>1200</td><td>Warning</td><td>Run completed with anomalies</td></tr>
+<tr><td>1300</td><td>Error</td><td>Delivery failure</td></tr>
+</table>
+<p>PowerShell: <code>Get-EventLog -LogName ACPollerForAPS -Newest 20</code>. The event
+source is created at service installation (admin). Reinstall the service to create it.</p>
+
+<h3>Service lifecycle</h3>
+<pre>sc start ACPollerForAPS
+sc stop  ACPollerForAPS</pre>
+<p>Restart the service after changing settings.json.</p>
+
+<h3>Troubleshooting</h3>
+<table>
+<tr><th>Symptom</th><th>Likely cause</th></tr>
+<tr><td>Service runs but processes nothing</td><td>Interval too long (waits for its slot), wrong input folder, or no channel matches the Buyer. Check the logs.</td></tr>
+<tr><td>FTPS/S3 secret cannot be decrypted</td><td>Encrypted on a machine other than the service's (DPAPI machine scope).</td></tr>
+<tr><td>[SC] OpenService 1060</td><td>Install failed earlier; the service does not exist.</td></tr>
+</table>
+
+<p style="color:#7a8288;font-size:11px;text-align:center;margin-top:24px;">
+ACPollerForAPS &mdash; Arondor. Full illustrated manual available as PDF.</p>
+
+</body></html>

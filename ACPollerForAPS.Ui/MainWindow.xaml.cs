@@ -45,6 +45,13 @@ namespace PipelineConfigWpf
             help.Show();
         }
 
+        // ouvre le manuel intégré (HTML embarqué, hors ligne)
+        private void OpenManual(object sender, RoutedEventArgs e)
+        {
+            var manual = new ManualWindow { Owner = this };
+            manual.Show();
+        }
+
         private void HookVm()
         {
             if (Vm == null) return;

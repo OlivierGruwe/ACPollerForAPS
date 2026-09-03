@@ -147,20 +147,26 @@
 
         <!-- Toolbar -->
         <Border DockPanel.Dock="Top" Background="{DynamicResource MahApps.Brushes.Control.Background}" BorderBrush="{DynamicResource MahApps.Brushes.Control.Border}" BorderThickness="0,0,0,1">
-            <StackPanel Orientation="Horizontal" Margin="16,8">
-                <Button Content="New" Command="{Binding NewCommand}" Width="80" Margin="0,0,6,0" />
-                <Button Content="Open…" Command="{Binding OpenCommand}" Width="80" Margin="0,0,6,0" />
-                <Button Content="Save" Command="{Binding SaveCommand}" Width="90" Margin="0,0,6,0"
+            <DockPanel Margin="16,8" LastChildFill="False">
+                <!-- actions fichier à gauche -->
+                <Button DockPanel.Dock="Left" Content="New" Command="{Binding NewCommand}" Width="80" Margin="0,0,6,0" />
+                <Button DockPanel.Dock="Left" Content="Open…" Command="{Binding OpenCommand}" Width="80" Margin="0,0,6,0" />
+                <Button DockPanel.Dock="Left" Content="Save" Command="{Binding SaveCommand}" Width="90" Margin="0,0,6,0"
                         Style="{StaticResource MahApps.Styles.Button.Square.Accent}" />
-                <Button Content="Save as…" Command="{Binding SaveAsCommand}" Width="100" Margin="0,0,6,0" />
-                <Button Content="Validate" Command="{Binding ValidateCommand}" Width="90" />
-                <Button x:Name="ThemeButton" Content="🌙 Dark" Width="90" Margin="16,0,0,0"
-                        Click="ToggleTheme"
-                        ToolTip="Switch between light and dark theme." />
-                <Button Content="? Help" Width="70" Margin="6,0,0,0"
+                <Button DockPanel.Dock="Left" Content="Save as…" Command="{Binding SaveAsCommand}" Width="100" Margin="0,0,6,0" />
+                <Button DockPanel.Dock="Left" Content="Validate" Command="{Binding ValidateCommand}" Width="90" />
+
+                <!-- utilitaires à droite (ordre visuel : Dark, Help, Manual) -->
+                <Button DockPanel.Dock="Right" Content="Manual" Width="80" Margin="6,0,0,0"
+                        Click="OpenManual"
+                        ToolTip="Open the built-in user manual." />
+                <Button DockPanel.Dock="Right" Content="? Help" Width="70" Margin="6,0,0,0"
                         Click="OpenHelp"
                         ToolTip="Configuration help assistant." />
-            </StackPanel>
+                <Button DockPanel.Dock="Right" x:Name="ThemeButton" Content="🌙 Dark" Width="90"
+                        Click="ToggleTheme"
+                        ToolTip="Switch between light and dark theme." />
+            </DockPanel>
         </Border>
 
         <!-- Status bar -->

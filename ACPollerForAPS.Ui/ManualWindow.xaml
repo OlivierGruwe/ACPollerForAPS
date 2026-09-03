@@ -1,0 +1,16 @@
+<mah:MetroWindow x:Class="PipelineConfigWpf.ManualWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:mah="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
+                 Title="User Manual" Height="720" Width="900"
+                 TitleCharacterCasing="Normal"
+                 WindowStartupLocation="CenterOwner">
+    <DockPanel>
+        <Border DockPanel.Dock="Bottom" Padding="8">
+            <TextBlock Text="Offline manual. The full illustrated version is available as PDF."
+                       Foreground="Gray" FontSize="11" />
+        </Border>
+        <!-- WebBrowser natif (moteur IE embarqué) : hors ligne, aucune dépendance -->
+        <WebBrowser x:Name="Browser" />
+    </DockPanel>
+</mah:MetroWindow>
