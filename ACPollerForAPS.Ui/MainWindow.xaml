@@ -157,6 +157,9 @@
                 <Button x:Name="ThemeButton" Content="🌙 Dark" Width="90" Margin="16,0,0,0"
                         Click="ToggleTheme"
                         ToolTip="Switch between light and dark theme." />
+                <Button Content="? Help" Width="70" Margin="6,0,0,0"
+                        Click="OpenHelp"
+                        ToolTip="Configuration help assistant." />
             </StackPanel>
         </Border>
 

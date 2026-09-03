@@ -204,9 +204,22 @@ namespace ConversionService
 
             sw.Stop();
             // résumé de fin de passage — la ligne à lire d'un coup d'œil
-            Log.Info("{0}: [run {1}] terminé en {2} ms — {3} fichier(s) source déposé(s) en {4} sortie(s), sur {5} canal(aux) OK / {6} en échec | ignorés(non prêts)={7} | erreurs lecture={8} routage={9} sans-canal={10}",
-                Name, runId, sw.ElapsedMilliseconds, delivered, outputsWritten,
+            var summary = string.Format(
+                "[run {0}] terminé en {1} ms — {2} fichier(s) source déposé(s) en {3} sortie(s), sur {4} canal(aux) OK / {5} en échec | ignorés(non prêts)={6} | erreurs lecture={7} routage={8} sans-canal={9}",
+                runId, sw.ElapsedMilliseconds, delivered, outputsWritten,
                 channelsOk, channelsFailed, notReady, readErrors, routeErrors, noChannel);
+            Log.Info("{0}: {1}", Name, summary);
+
+            // événement de supervision Windows : gravité selon les incidents du passage
+            int problems = channelsFailed + readErrors + routeErrors + noChannel;
+            if (problems > 0)
+                EventLogWriter.Warn(
+                    "Passage terminé avec des anomalies. " + summary,
+                    EventLogWriter.EvtRunErrors);
+            else
+                EventLogWriter.Info(
+                    "Passage OK. " + summary,
+                    EventLogWriter.EvtRunSummary);
         }
 
         /// <summary>Découpe une liste en lots de taille max batchSize (0 = un seul lot).</summary>

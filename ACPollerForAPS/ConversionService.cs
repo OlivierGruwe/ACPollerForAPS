@@ -36,6 +36,7 @@ namespace ConversionService
                     Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)));
             _pipeline.Start();
             Log.Info("Service started");
+            EventLogWriter.Info("ACPollerForAPS service started.", EventLogWriter.EvtServiceStarted);
         }
 
         protected override void OnPause() => _pipeline?.Pause();
@@ -45,6 +46,7 @@ namespace ConversionService
         {
             _pipeline?.Stop();
             Log.Info("Service stopped");
+            EventLogWriter.Info("ACPollerForAPS service stopped.", EventLogWriter.EvtServiceStopped);
             LogManager.Shutdown();
         }
     }

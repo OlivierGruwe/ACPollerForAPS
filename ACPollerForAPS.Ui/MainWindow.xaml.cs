@@ -38,6 +38,13 @@ namespace PipelineConfigWpf
             ThemeButton.Content = isDark ? "☀ Light" : "🌙 Dark";
         }
 
+        // ouvre l'assistant d'aide (fenêtre non modale, propriétaire = cette fenêtre)
+        private void OpenHelp(object sender, RoutedEventArgs e)
+        {
+            var help = new HelpWindow { Owner = this };
+            help.Show();
+        }
+
         private void HookVm()
         {
             if (Vm == null) return;
