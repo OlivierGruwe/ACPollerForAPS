@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="ACPollerForAPS.Core/ACPollerForAPS.Core.csproj" />
+  <Project Path="ACPollerForAPS.Ui/PipelineConfigWpf.csproj" />
+  <Project Path="ACPollerForAPS/ACPollerForAPS.csproj" Id="f8076ce5-8ba5-4b81-baaa-ff376b1cd942" />
+</Solution>

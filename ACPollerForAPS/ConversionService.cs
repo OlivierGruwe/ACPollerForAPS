@@ -1,4 +1,5 @@
 using NLog;
+using ACPollerForAPS.Core;
 using System.IO;
 using System.Reflection;
 using System.ServiceProcess;
@@ -8,12 +9,11 @@ namespace ConversionService
     public class ConversionWindowsService : ServiceBase
     {
         private static readonly Logger Log = LogManager.GetCurrentClassLogger();
-        private TxtToXmlWorker _txtToXml;
-        private XmlToTxtWorker _xmlToTxt;
+        private PipelineWorker _pipeline;
 
         public ConversionWindowsService()
         {
-            ServiceName = "ACTxt2Xml";
+            ServiceName = "ACPollerForAPS";
             CanPauseAndContinue = true;
             CanStop = true;
         }
@@ -25,30 +25,25 @@ namespace ConversionService
                 "settings.json");
             var settings = AppSettings.Load(path);
 
-            _txtToXml = new TxtToXmlWorker(settings.TxtToXml);
-            _xmlToTxt = new XmlToTxtWorker(settings.XmlToTxt);
+            if (settings?.Pipeline == null)
+            {
+                Log.Error("Aucune section 'Pipeline' dans settings.json : le service ne démarre pas de worker.");
+                return;
+            }
 
-            _txtToXml.Start();
-            _xmlToTxt.Start();
+            _pipeline = new PipelineWorker(settings.Pipeline,
+                ProviderLoader.LoadAll(
+                    Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)));
+            _pipeline.Start();
             Log.Info("Service started");
         }
 
-        protected override void OnPause()
-        {
-            _txtToXml.Pause();
-            _xmlToTxt.Pause();
-        }
-
-        protected override void OnContinue()
-        {
-            _txtToXml.Resume();
-            _xmlToTxt.Resume();
-        }
+        protected override void OnPause() => _pipeline?.Pause();
+        protected override void OnContinue() => _pipeline?.Resume();
 
         protected override void OnStop()
         {
-            _txtToXml.Stop();
-            _xmlToTxt.Stop();
+            _pipeline?.Stop();
             Log.Info("Service stopped");
             LogManager.Shutdown();
         }

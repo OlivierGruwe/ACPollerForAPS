@@ -1,0 +1,74 @@
+{
+  "Pipeline": {
+    "InputFolder": "C:\\Data\\In",
+    "ArchiveFolder": "C:\\Data\\Archive",
+    "ErrorFolder": "C:\\Data\\Error",
+    "ArchiveEnabled": true,
+    "FileFilter": "*.xml",
+    "StableCheckMs": 1000,
+    "RecordPath": "/InvoiceData",
+    "BuyerPath": "Header/Buyer/BuyerId",
+    "Schedule": {
+      "IntervalValue": 24,
+      "IntervalUnit": "Hours"
+    },
+    "BatchSize": 0,
+    "Channels": [
+      {
+        "Name": "Dynamics AX",
+        "Enabled": true,
+        "Buyers": [ "BUYER-US-001" ],
+        "OutputFormat": "Csv",
+        "OutputFolder": "C:\\Data\\Out\\DynamicsAX",
+        "OutputFileName": "{date}.csv",
+        "RecordPath": "/InvoiceData",
+        "LinesPath": "AccountingLines/AccountingLine",
+        "WriteRecordEvenIfNoLines": false,
+        "CsvFormat": {
+          "Delimiter": ",",
+          "Quote": "\"",
+          "QuoteAllFields": false,
+          "DecimalSeparator": ",",
+          "DateFormat": "dd.MM.yyyy",
+          "WriteHeader": false,
+          "Encoding": "UTF-8"
+        },
+        "Fields": [
+          { "Name": "InvoiceRef", "Type": "text", "Source": "header", "Path": "Header/InvoiceNumber" },
+          { "Name": "InvoiceDate", "Type": "date", "Source": "header", "Path": "Header/InvoiceDate", "InFormat": "yyyy-MM-dd" },
+          { "Name": "VendorCode", "Type": "text", "Source": "header", "Path": "Header/Supplier/SupplierCode" },
+          { "Name": "Posting", "Type": "text", "Source": "line", "Path": "PostingType", "Values": { "Credit": "C", "Debit": "D" } },
+          { "Name": "GLAccount", "Type": "text", "Source": "line", "Path": "GLAccount" },
+          { "Name": "Amount", "Type": "amount", "Source": "line", "Path": "Amount", "DecDigits": 2 },
+          { "Name": "CostCenter", "Type": "text", "Source": "line", "Path": "CostCenter" },
+          { "Name": "ProfitCenter", "Type": "text", "Source": "line", "Path": "ProfitCenter" },
+          { "Name": "Dimension1", "Type": "text", "Source": "line", "Path": "Dimensions/Dimension1" },
+          { "Name": "Currency", "Type": "text", "Source": "header", "Path": "Header/Currency" }
+        ]
+      },
+      {
+        "Name": "Optima",
+        "Enabled": true,
+        "Buyers": [ "BUYER-EU-104" ],
+        "OutputFormat": "Xml",
+        "OutputFolder": "C:\\Data\\Out\\Optima",
+        "OutputFileName": "{date}.xml",
+        "RecordPath": "/InvoiceData",
+        "LinesPath": "AccountingLines/AccountingLine",
+        "XmlFormat": {
+          "RootElement": "Invoices",
+          "RecordElement": "Invoice",
+          "LineElement": "Line",
+          "DecimalSeparator": ".",
+          "DateFormat": "yyyy-MM-dd",
+          "Encoding": "UTF-8"
+        },
+        "Fields": [
+          { "Name": "InvoiceRef", "Type": "text", "Source": "header", "Path": "Header/InvoiceNumber" },
+          { "Name": "GLAccount", "Type": "text", "Source": "line", "Path": "GLAccount" },
+          { "Name": "Amount", "Type": "amount", "Source": "line", "Path": "Amount", "DecDigits": 2 }
+        ]
+      }
+    ]
+  }
+}

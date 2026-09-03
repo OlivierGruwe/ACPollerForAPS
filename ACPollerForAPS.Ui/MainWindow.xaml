@@ -1,0 +1,698 @@
+<mah:MetroWindow x:Class="PipelineConfigWpf.MainWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:mah="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
+                 xmlns:local="clr-namespace:PipelineConfigWpf"
+                 Title="{Binding Title}" Height="820" Width="1200"
+                 TitleCharacterCasing="Normal"
+                 WindowStartupLocation="CenterScreen">
+
+    <Window.DataContext>
+        <local:MainViewModel />
+    </Window.DataContext>
+
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+
+        <!-- En-têtes de DataGrid lisibles en clair ET sombre : fond et texte
+             suivent le thème MahApps, texte en semi-gras. Style de base dont
+             héritent les HeaderStyle par colonne (via BasedOn). -->
+        <Style x:Key="GridHeader" TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="{DynamicResource MahApps.Brushes.Gray8}" />
+            <Setter Property="Foreground" Value="{DynamicResource MahApps.Brushes.ThemeForeground}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="6,4" />
+            <Setter Property="BorderBrush" Value="{DynamicResource MahApps.Brushes.Control.Border}" />
+            <Setter Property="BorderThickness" Value="0,0,1,1" />
+        </Style>
+        <!-- Couleurs de marque Arondor -->
+        <SolidColorBrush x:Key="ArondorCyan" Color="#29ABE2" />
+        <SolidColorBrush x:Key="ArondorGrey" Color="#5B6770" />
+        
+
+        <!-- Style d'onglet plus marqué : cadre, padding, onglet actif en cyan -->
+        <Style x:Key="BrandTab" TargetType="TabItem">
+            <Setter Property="Padding" Value="18,8" />
+            <Setter Property="Margin" Value="0,0,3,0" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="{StaticResource ArondorGrey}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="Bd"
+                                Background="{DynamicResource MahApps.Brushes.Gray8}"
+                                BorderBrush="{DynamicResource MahApps.Brushes.Control.Border}"
+                                BorderThickness="1,1,1,0"
+                                CornerRadius="4,4,0,0"
+                                Margin="{TemplateBinding Margin}">
+                            <ContentPresenter ContentSource="Header"
+                                              Margin="{TemplateBinding Padding}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource ArondorCyan}" />
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource ArondorCyan}" />
+                                <Setter Property="Foreground" Value="White" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsSelected" Value="False" />
+                                    <Condition Property="IsMouseOver" Value="True" />
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource MahApps.Brushes.Gray6}" />
+                            </MultiTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="Label">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,4" />
+        </Style>
+        <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Margin" Value="0,3" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="Section" TargetType="GroupBox">
+            <Setter Property="Margin" Value="0,0,0,14" />
+            <Setter Property="Padding" Value="10" />
+            <Setter Property="BorderBrush" Value="{DynamicResource MahApps.Brushes.Control.Border}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <!-- en-tête toujours visible : gras, gris-bleu Arondor -->
+            <Setter Property="HeaderTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding}" FontWeight="SemiBold" FontSize="13"
+                                   Foreground="{StaticResource ArondorGrey}" Margin="2,0" />
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="Hint" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="Gray" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Margin" Value="0,0,0,6" />
+        </Style>
+        <!-- Icônes vectorielles génériques (pas de marque déposée) -->
+        <!-- Dossier (FS) -->
+        <PathGeometry x:Key="IconFolder"
+            Figures="M2,4 L7,4 L9,6 L18,6 L18,16 L2,16 Z" />
+        <!-- Serveur + cadenas (FTPS) : deux baies + un petit cadenas -->
+        <GeometryGroup x:Key="IconServerLock">
+            <RectangleGeometry Rect="3,3,10,5" RadiusX="1" RadiusY="1" />
+            <RectangleGeometry Rect="3,10,10,5" RadiusX="1" RadiusY="1" />
+            <EllipseGeometry Center="5.5,5.5" RadiusX="0.7" RadiusY="0.7" />
+            <EllipseGeometry Center="5.5,12.5" RadiusX="0.7" RadiusY="0.7" />
+            <RectangleGeometry Rect="14,9,5,5" RadiusX="1" RadiusY="1" />
+            <PathGeometry Figures="M15,9 L15,7.5 A1.5,1.5 0 0 1 18,7.5 L18,9" />
+        </GeometryGroup>
+        <!-- Bucket / stockage cloud (S3) : un seau -->
+        <PathGeometry x:Key="IconBucket"
+            Figures="M3,5 L17,5 L15.5,17 L4.5,17 Z M3,5 A7,2 0 0 0 17,5" />
+
+        <Style x:Key="TransportIcon" TargetType="Path">
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="Stretch" Value="Uniform" />
+            <Setter Property="Fill" Value="{StaticResource ArondorCyan}" />
+            <Setter Property="Stroke" Value="{StaticResource ArondorGrey}" />
+            <Setter Property="StrokeThickness" Value="0.6" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,0,10,0" />
+        </Style>
+    </Window.Resources>
+
+    <DockPanel>
+        <!-- Header : logo Arondor + nom du produit -->
+        <Border DockPanel.Dock="Top" Background="{DynamicResource MahApps.Brushes.Control.Background}"
+                BorderBrush="{DynamicResource MahApps.Brushes.Control.Border}" BorderThickness="0,0,0,1" Padding="16,10">
+            <DockPanel>
+                <!-- logo : déposer arondor_logo.png dans le projet (Build Action: Resource).
+                     Si le fichier est absent, l'image reste vide sans planter. -->
+                <Image DockPanel.Dock="Left" Height="40" Margin="0,0,16,0"
+                       VerticalAlignment="Center" Source="arondor_logo.png"
+                       RenderOptions.BitmapScalingMode="HighQuality" />
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="ACPollerForAPS" FontSize="20" FontWeight="SemiBold"
+                               Foreground="{StaticResource ArondorGrey}" />
+                    <TextBlock Text="Invoice pipeline — routing, mapping and delivery"
+                               FontSize="12" Foreground="{StaticResource ArondorCyan}" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Toolbar -->
+        <Border DockPanel.Dock="Top" Background="{DynamicResource MahApps.Brushes.Control.Background}" BorderBrush="{DynamicResource MahApps.Brushes.Control.Border}" BorderThickness="0,0,0,1">
+            <StackPanel Orientation="Horizontal" Margin="16,8">
+                <Button Content="New" Command="{Binding NewCommand}" Width="80" Margin="0,0,6,0" />
+                <Button Content="Open…" Command="{Binding OpenCommand}" Width="80" Margin="0,0,6,0" />
+                <Button Content="Save" Command="{Binding SaveCommand}" Width="90" Margin="0,0,6,0"
+                        Style="{StaticResource MahApps.Styles.Button.Square.Accent}" />
+                <Button Content="Save as…" Command="{Binding SaveAsCommand}" Width="100" Margin="0,0,6,0" />
+                <Button Content="Validate" Command="{Binding ValidateCommand}" Width="90" />
+                <Button x:Name="ThemeButton" Content="🌙 Dark" Width="90" Margin="16,0,0,0"
+                        Click="ToggleTheme"
+                        ToolTip="Switch between light and dark theme." />
+            </StackPanel>
+        </Border>
+
+        <!-- Status bar -->
+        <Border DockPanel.Dock="Bottom" Background="{DynamicResource MahApps.Brushes.Control.Background}" Padding="12,6">
+            <TextBlock Text="{Binding Status}" />
+        </Border>
+
+        <!-- Tabs -->
+        <TabControl Margin="12" BorderBrush="{DynamicResource MahApps.Brushes.Control.Border}" BorderThickness="1" Background="{DynamicResource MahApps.Brushes.Control.Background}"
+                    Padding="4">
+
+            <!-- ===================== GENERAL ===================== -->
+            <TabItem Header="General" Style="{StaticResource BrandTab}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="0,16" MaxWidth="860" HorizontalAlignment="Center">
+
+                        <GroupBox Header="Folders" Style="{StaticResource Section}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="160" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
+                                </Grid.RowDefinitions>
+
+                                <Label Grid.Row="0" Grid.Column="0" Content="Input folder" />
+                                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding InputFolder, UpdateSourceTrigger=PropertyChanged}" ToolTip="Folder the service watches for incoming APS XML files."
+                                         mah:TextBoxHelper.Watermark="Folder watched for incoming XML" />
+                                <Button Grid.Row="0" Grid.Column="2" Content="Browse…" Width="80" Margin="6,3,0,3"
+                                        Click="BrowseInput" />
+
+                                <Label Grid.Row="1" Grid.Column="0" Content="Archive folder" />
+                                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding ArchiveFolder, UpdateSourceTrigger=PropertyChanged}" ToolTip="Processed XML files are moved here (in a dated subfolder) after a successful delivery." />
+                                <Button Grid.Row="1" Grid.Column="2" Content="Browse…" Width="80" Margin="6,3,0,3"
+                                        Click="BrowseArchive" />
+
+                                <Label Grid.Row="2" Grid.Column="0" Content="Error folder" />
+                                <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding ErrorFolder, UpdateSourceTrigger=PropertyChanged}" ToolTip="Files that cannot be routed or read are moved here for review." />
+                                <Button Grid.Row="2" Grid.Column="2" Content="Browse…" Width="80" Margin="6,3,0,3"
+                                        Click="BrowseError" />
+
+                                <Label Grid.Row="3" Grid.Column="0" Content="Archiving enabled" />
+                                <mah:ToggleSwitch Grid.Row="3" Grid.Column="1" IsOn="{Binding ArchiveEnabled}" />
+                            </Grid>
+                        </GroupBox>
+
+                        <GroupBox Header="File detection" Style="{StaticResource Section}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="160" />
+                                    <ColumnDefinition Width="200" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions><RowDefinition /><RowDefinition /></Grid.RowDefinitions>
+
+                                <Label Grid.Row="0" Grid.Column="0" Content="File filter" />
+                                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding FileFilter, UpdateSourceTrigger=PropertyChanged}" ToolTip="Which files to pick up, e.g. *.xml" />
+
+                                <Label Grid.Row="1" Grid.Column="0" Content="Stability check (ms)" />
+                                <mah:NumericUpDown Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="60000"
+                                                   Value="{Binding StableCheckMs}" />
+                            </Grid>
+                        </GroupBox>
+
+                        <GroupBox Header="Routing" Style="{StaticResource Section}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Hint}"
+                                           Text="Record path points to one invoice; Buyer path (relative to the record) selects the output channel." />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="160" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions><RowDefinition /><RowDefinition /></Grid.RowDefinitions>
+
+                                    <Label Grid.Row="0" Grid.Column="0" Content="Record path" />
+                                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding RecordPath, UpdateSourceTrigger=PropertyChanged}"
+                                             mah:TextBoxHelper.Watermark="/InvoiceData"
+                                             ToolTip="XPath to a single invoice record in the XML, e.g. /InvoiceData" />
+
+                                    <Label Grid.Row="1" Grid.Column="0" Content="Buyer path" />
+                                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding BuyerPath, UpdateSourceTrigger=PropertyChanged}"
+                                             mah:TextBoxHelper.Watermark="Header/Buyer/BuyerId"
+                                             ToolTip="XPath (relative to the record) to the value that selects the output channel." />
+                                </Grid>
+                            </StackPanel>
+                        </GroupBox>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ===================== SCHEDULE ===================== -->
+            <TabItem Header="Schedule" Style="{StaticResource BrandTab}">
+                <StackPanel Margin="0,24" MaxWidth="680" HorizontalAlignment="Center">
+                    <GroupBox Header="Run frequency" Style="{StaticResource Section}">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <Label Content="Run every" VerticalAlignment="Center" />
+                                <mah:NumericUpDown Minimum="1" Maximum="100000" Width="100" Margin="8,0"
+                                                   Value="{Binding IntervalValue}" />
+                                <ComboBox Width="120" ItemsSource="{Binding IntervalUnits}"
+                                          SelectedItem="{Binding IntervalUnit}" />
+                            </StackPanel>
+                            <TextBlock Text="{Binding IntervalPreview}" Style="{StaticResource Hint}" Margin="0,8,0,0" />
+                        </StackPanel>
+                    </GroupBox>
+                </StackPanel>
+            </TabItem>
+
+            <!-- ===================== CHANNELS ===================== -->
+            <TabItem Header="Output channels" Style="{StaticResource BrandTab}">
+                <Grid Margin="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="240" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- left: channel list -->
+                    <GroupBox Grid.Column="0" Header="Channels" Style="{StaticResource Section}" Margin="0,0,10,0">
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,6,0,0">
+                                <Button Content="Add" Command="{Binding AddChannelCommand}" Width="60" Margin="0,0,4,0" />
+                                <Button Content="Remove" Command="{Binding RemoveChannelCommand}" Width="66" Margin="0,0,4,0" />
+                                <Button Content="Copy" Command="{Binding DuplicateChannelCommand}" Width="60" />
+                            </StackPanel>
+                            <ListBox ItemsSource="{Binding Channels}"
+                                     SelectedItem="{Binding SelectedChannel}"
+                                     DisplayMemberPath="Display" />
+                        </DockPanel>
+                    </GroupBox>
+
+                    <!-- right: channel editor -->
+                    <!-- placeholder quand aucun canal n'est sélectionné -->
+                    <TextBlock Grid.Column="1" Text="Select a channel, or click Add to create one."
+                               Foreground="Gray" HorizontalAlignment="Center" VerticalAlignment="Center" >
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasChannel}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto"
+                                  Visibility="{Binding HasChannel, Converter={StaticResource BoolToVis}}">
+                        <StackPanel DataContext="{Binding SelectedChannel}">
+
+                            <GroupBox Header="Channel settings" Style="{StaticResource Section}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
+                                        <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
+                                        <RowDefinition /><RowDefinition /><RowDefinition />
+                                    </Grid.RowDefinitions>
+
+                                    <Label Grid.Row="0" Grid.Column="0" Content="Channel name" />
+                                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" />
+
+                                    <Label Grid.Row="1" Grid.Column="0" Content="Enabled" />
+                                    <mah:ToggleSwitch Grid.Row="1" Grid.Column="1" IsOn="{Binding Enabled}" />
+
+                                    <Label Grid.Row="2" Grid.Column="0" Content="Buyers (semicolon)" />
+                                    <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding BuyersCsv, UpdateSourceTrigger=PropertyChanged}" ToolTip="Buyer values routed to this channel, separated by semicolons."
+                                             mah:TextBoxHelper.Watermark="BUYER-US-001;BUYER-US-002" />
+
+                                    <Label Grid.Row="3" Grid.Column="0" Content="Output format" />
+                                    <ComboBox Grid.Row="3" Grid.Column="1" Width="120" HorizontalAlignment="Left"
+                                              ItemsSource="{Binding Formats}" SelectedItem="{Binding OutputFormat}" ToolTip="Csv for Dynamics AX, Xml for Optima." />
+
+                                    <Label Grid.Row="4" Grid.Column="0" Content="Output folder" />
+                                    <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding OutputFolder, UpdateSourceTrigger=PropertyChanged}" ToolTip="Destination folder when transport is Fs. For FTPS, the remote folder below is used." />
+
+                                    <Label Grid.Row="5" Grid.Column="0" Content="Output file name" />
+                                    <TextBox Grid.Row="5" Grid.Column="1" Text="{Binding OutputFileName, UpdateSourceTrigger=PropertyChanged}" ToolTip="Output file name. Tokens: {date} {time} {guid}. Example: {date}.csv"
+                                             mah:TextBoxHelper.Watermark="{}{date}.csv" />
+
+                                    <Label Grid.Row="6" Grid.Column="0" Content="Record path" />
+                                    <TextBox Grid.Row="6" Grid.Column="1" Text="{Binding RecordPath, UpdateSourceTrigger=PropertyChanged}" ToolTip="XPath to a single invoice record, e.g. /InvoiceData" />
+
+                                    <Label Grid.Row="7" Grid.Column="0" Content="Lines path" />
+                                    <TextBox Grid.Row="7" Grid.Column="1" Text="{Binding LinesPath, UpdateSourceTrigger=PropertyChanged}" ToolTip="XPath (relative to the record) to the repeating accounting lines, e.g. AccountingLines/AccountingLine" />
+
+                                    <Label Grid.Row="8" Grid.Column="0" Content="Provider" />
+                                    <ComboBox Grid.Row="8" Grid.Column="1" IsEditable="True" Width="180" HorizontalAlignment="Left"
+                                              Text="{Binding Provider, UpdateSourceTrigger=PropertyChanged}"
+                                              ItemsSource="{Binding KnownProviders}"
+                                              ToolTip="Transformation provider. 'mapping' (default) uses the configurable field mapping. For an ERP with a specific plugin DLL in providers/, type its provider name." />
+
+                                    <Label Grid.Row="9" Grid.Column="0" Content="Sample XML" />
+                                    <StackPanel Grid.Row="9" Grid.Column="1" Orientation="Horizontal">
+                                        <Button Content="Load sample XML…" Width="140" Click="LoadSampleXml"
+                                                ToolTip="Load a representative input XML for this channel. Feeds the preview and the Path auto-completion. It is stored in the config." />
+                                        <TextBlock Text="{Binding SampleXmlStatus}" Foreground="Gray" FontSize="11"
+                                                   VerticalAlignment="Center" Margin="10,0,0,0" />
+                                    </StackPanel>
+
+                                    <Label Grid.Row="10" Grid.Column="0" Content="Invoices per file" />
+                                    <StackPanel Grid.Row="10" Grid.Column="1" Orientation="Horizontal">
+                                        <mah:NumericUpDown Minimum="0" Maximum="1000000" Width="120"
+                                                           Value="{Binding BatchSize}"
+                                                           ToolTip="Max invoices per output file for this channel. 0 = all invoices in a single file. E.g. 5 with 30 invoices => 6 output files of 5." />
+                                        <TextBlock Text="0 = one merged file" Foreground="Gray" FontSize="11"
+                                                   VerticalAlignment="Center" Margin="10,0,0,0" />
+                                    </StackPanel>
+                                </Grid>
+                            </GroupBox>
+
+                            <GroupBox Header="Output transport" Style="{StaticResource Section}">
+                                <StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="150" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions><RowDefinition /><RowDefinition /></Grid.RowDefinitions>
+
+                                        <Label Grid.Row="0" Grid.Column="0" Content="Destination" />
+                                        <ComboBox Grid.Row="0" Grid.Column="1" Width="120" HorizontalAlignment="Left"
+                                                  ItemsSource="{Binding TransportTypes}" SelectedItem="{Binding TransportType}" ToolTip="Where the generated file is delivered: local file system (Fs) or FTPS server." />
+
+                                        <Label Grid.Row="1" Grid.Column="0" Content="Retry (count / delay ms)" />
+                                        <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal">
+                                            <mah:NumericUpDown Minimum="1" Maximum="20" Width="70" Value="{Binding RetryCount}" />
+                                            <mah:NumericUpDown Minimum="0" Maximum="600000" Width="100" Margin="8,0,0,0" Value="{Binding RetryDelayMs}" />
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <!-- Icône de la destination sélectionnée (générique, sans marque) -->
+                                    <StackPanel Orientation="Horizontal" Margin="0,10,0,4">
+                                        <Path Style="{StaticResource TransportIcon}" Data="{StaticResource IconFolder}"
+                                              Visibility="{Binding IsFs, Converter={StaticResource BoolToVis}}" />
+                                        <Path Style="{StaticResource TransportIcon}" Data="{StaticResource IconServerLock}"
+                                              Visibility="{Binding IsFtps, Converter={StaticResource BoolToVis}}" />
+                                        <Path Style="{StaticResource TransportIcon}" Data="{StaticResource IconBucket}"
+                                              Visibility="{Binding IsS3, Converter={StaticResource BoolToVis}}" />
+                                        <TextBlock VerticalAlignment="Center" Foreground="{StaticResource ArondorGrey}"
+                                                   FontWeight="SemiBold" Text="{Binding TransportType}" />
+                                    </StackPanel>
+
+                                    <!-- Champs FTPS : visibles seulement si Destination = Ftps -->
+                                    <Grid Visibility="{Binding IsFtps, Converter={StaticResource BoolToVis}}"
+                                          Margin="0,8,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="150" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
+                                            <RowDefinition /><RowDefinition /><RowDefinition />
+                                        </Grid.RowDefinitions>
+
+                                        <Label Grid.Row="0" Grid.Column="0" Content="Host" />
+                                        <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding Host, UpdateSourceTrigger=PropertyChanged}" ToolTip="FTPS server host name or IP."
+                                                 mah:TextBoxHelper.Watermark="ftp.example.com" />
+
+                                        <Label Grid.Row="1" Grid.Column="0" Content="Port" />
+                                        <mah:NumericUpDown Grid.Row="1" Grid.Column="1" Minimum="1" Maximum="65535"
+                                                           Width="100" HorizontalAlignment="Left" Value="{Binding Port}" />
+
+                                        <Label Grid.Row="2" Grid.Column="0" Content="Remote folder" />
+                                        <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding RemoteFolder, UpdateSourceTrigger=PropertyChanged}" ToolTip="Target folder on the FTPS server. Created if missing."
+                                                 mah:TextBoxHelper.Watermark="/" />
+
+                                        <Label Grid.Row="3" Grid.Column="0" Content="Username" />
+                                        <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}" ToolTip="FTPS account user name." />
+
+                                        <Label Grid.Row="4" Grid.Column="0" Content="Password" />
+                                        <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal">
+                                            <!-- PasswordBox : pas de binding (sécurité WPF), géré en code-behind -->
+                                            <PasswordBox x:Name="FtpPassword" Width="220" ToolTip="Leave empty to keep the current stored password. Typed value is encrypted (DPAPI) on save."
+                                                         mah:TextBoxHelper.Watermark="leave empty to keep current" />
+                                            <TextBlock Text="(stored encrypted)" Foreground="Gray" FontSize="11"
+                                                       VerticalAlignment="Center" Margin="8,0,0,0" />
+                                        </StackPanel>
+
+                                        <Label Grid.Row="5" Grid.Column="0" Content="FTPS mode" />
+                                        <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal">
+                                            <ComboBox Width="120" ItemsSource="{Binding FtpsModes}" SelectedItem="{Binding FtpsMode}" ToolTip="Explicit = FTPES (AUTH TLS, usually port 21). Implicit = TLS from the start (usually port 990)." />
+                                            <CheckBox Content="Validate certificate" IsChecked="{Binding ValidateCertificate}" ToolTip="Verify the server TLS certificate. Turn off only for test servers with self-signed certs."
+                                                      VerticalAlignment="Center" Margin="12,0,0,0" />
+                                        </StackPanel>
+
+                                        <Button Grid.Row="6" Grid.Column="1" Content="Test connection" Width="130" ToolTip="Open an FTPS connection with these settings to verify host, credentials and TLS."
+                                                HorizontalAlignment="Left" Margin="0,6,0,0" Click="TestFtps" />
+                                    </Grid>
+
+                                    <!-- Champs S3 : visibles seulement si Destination = S3 -->
+                                    <Grid Visibility="{Binding IsS3, Converter={StaticResource BoolToVis}}"
+                                          Margin="0,8,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="150" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
+                                            <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
+                                        </Grid.RowDefinitions>
+
+                                        <Label Grid.Row="0" Grid.Column="0" Content="Bucket" />
+                                        <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding S3Bucket, UpdateSourceTrigger=PropertyChanged}"
+                                                 ToolTip="Target S3 bucket name." />
+
+                                        <Label Grid.Row="1" Grid.Column="0" Content="Key prefix" />
+                                        <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding S3KeyPrefix, UpdateSourceTrigger=PropertyChanged}"
+                                                 mah:TextBoxHelper.Watermark="optional, e.g. dynamics/"
+                                                 ToolTip="Logical folder prepended to the file name to form the object key." />
+
+                                        <Label Grid.Row="2" Grid.Column="0" Content="Region" />
+                                        <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding S3Region, UpdateSourceTrigger=PropertyChanged}"
+                                                 mah:TextBoxHelper.Watermark="eu-west-1"
+                                                 ToolTip="AWS region. Ignored if a custom endpoint is set." />
+
+                                        <Label Grid.Row="3" Grid.Column="0" Content="Endpoint (custom)" />
+                                        <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding S3ServiceUrl, UpdateSourceTrigger=PropertyChanged}"
+                                                 mah:TextBoxHelper.Watermark="leave empty for AWS; e.g. https://minio.local:9000"
+                                                 ToolTip="Custom S3-compatible endpoint (MinIO, etc.). Empty = real AWS S3." />
+
+                                        <Label Grid.Row="4" Grid.Column="0" Content="Path-style access" />
+                                        <CheckBox Grid.Row="4" Grid.Column="1" IsChecked="{Binding S3ForcePathStyle}"
+                                                  VerticalAlignment="Center"
+                                                  ToolTip="Required by MinIO and many S3-compatible servers." />
+
+                                        <Label Grid.Row="5" Grid.Column="0" Content="Access key" />
+                                        <TextBox Grid.Row="5" Grid.Column="1" Text="{Binding S3AccessKey, UpdateSourceTrigger=PropertyChanged}" />
+
+                                        <Label Grid.Row="6" Grid.Column="0" Content="Secret key" />
+                                        <StackPanel Grid.Row="6" Grid.Column="1" Orientation="Horizontal">
+                                            <PasswordBox x:Name="S3Secret" Width="260"
+                                                         mah:TextBoxHelper.Watermark="leave empty to keep current"
+                                                         ToolTip="Leave empty to keep the current stored secret. Typed value is encrypted (DPAPI) on save." />
+                                            <TextBlock Text="(stored encrypted)" Foreground="Gray" FontSize="11"
+                                                       VerticalAlignment="Center" Margin="8,0,0,0" />
+                                        </StackPanel>
+
+                                        <Button Grid.Row="7" Grid.Column="1" Content="Test connection" Width="130"
+                                                HorizontalAlignment="Left" Margin="0,6,0,0" Click="TestS3"
+                                                ToolTip="Check the bucket is reachable with these credentials." />
+                                    </Grid>
+                                </StackPanel>
+                            </GroupBox>
+
+                            <GroupBox Header="Field mapping (output order = row order)" Style="{StaticResource Section}">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Hint}" TextWrapping="Wrap"
+                                               Text="Source: fixed = constant value · header/xpath = value from the invoice (via Path) · line = value from the current accounting line. Type: text · amount (decimals, Abs to drop sign) · date (Date in = input format). Only when: write the field only when a line path equals a value (e.g. PostingType = Credit) — for Vendor/Ledger columns." />
+                                    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,6,0,0">
+                                        <Button Content="Add field"
+                                                Command="{Binding DataContext.AddFieldCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                Width="80" Margin="0,0,4,0" />
+                                        <Button Content="Remove field"
+                                                Command="{Binding DataContext.RemoveFieldCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                Width="100" />
+                                    </StackPanel>
+                                    <DataGrid ItemsSource="{Binding Fields}" AutoGenerateColumns="False"
+                                              CanUserAddRows="False" Height="220"
+                                              SelectedItem="{Binding DataContext.SelectedField, RelativeSource={RelativeSource AncestorType=Window}}">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Binding="{Binding Name}" Width="*">
+                                                <DataGridTextColumn.HeaderStyle>
+                                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridHeader}">
+                                                        <Setter Property="Content" Value="Name" />
+                                                        <Setter Property="ToolTip" Value="Output column name (CSV header) or XML element name for this field." />
+                                                    </Style>
+                                                </DataGridTextColumn.HeaderStyle>
+                                            </DataGridTextColumn>
+
+                                            <DataGridComboBoxColumn SelectedItemBinding="{Binding Type}"
+                                                                    ItemsSource="{x:Static local:FieldVm.Types}" Width="80">
+                                                <DataGridComboBoxColumn.HeaderStyle>
+                                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridHeader}">
+                                                        <Setter Property="Content" Value="Type" />
+                                                        <Setter Property="ToolTip" Value="How the value is formatted: text (as-is), amount (number with decimals), date (reformatted to the output date format)." />
+                                                    </Style>
+                                                </DataGridComboBoxColumn.HeaderStyle>
+                                            </DataGridComboBoxColumn>
+
+                                            <DataGridTemplateColumn Width="90">
+                                                <DataGridTemplateColumn.HeaderStyle>
+                                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridHeader}">
+                                                        <Setter Property="Content" Value="Source" />
+                                                        <Setter Property="ToolTip" Value="Where the value comes from: fixed = constant (Value); header/xpath = a node of the invoice (Path); line = a node of the current accounting line (Path)." />
+                                                    </Style>
+                                                </DataGridTemplateColumn.HeaderStyle>
+                                                <!-- ComboBox toujours affiché + MàJ immédiate : au changement,
+                                                     Source est mis à jour tout de suite, donc PathOptions (colonne
+                                                     Path) se recalcule sans attendre la perte de focus. -->
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <ComboBox ItemsSource="{x:Static local:FieldVm.Sources}"
+                                                                  SelectedItem="{Binding Source, UpdateSourceTrigger=PropertyChanged}"
+                                                                  BorderThickness="0" Background="Transparent" />
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+
+                                            <DataGridTextColumn Binding="{Binding Value}" Width="*">
+                                                <DataGridTextColumn.HeaderStyle>
+                                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridHeader}">
+                                                        <Setter Property="Content" Value="Value" />
+                                                        <Setter Property="ToolTip" Value="Used only when Source = fixed: the constant value written for every row." />
+                                                    </Style>
+                                                </DataGridTextColumn.HeaderStyle>
+                                            </DataGridTextColumn>
+
+                                            <DataGridTemplateColumn Width="*">
+                                                <DataGridTemplateColumn.HeaderStyle>
+                                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridHeader}">
+                                                        <Setter Property="Content" Value="Path" />
+                                                        <Setter Property="ToolTip" Value="Used when Source = header/xpath (relative to the invoice record) or line (relative to the accounting line). The list is filtered by Source; you can also type a path freely." />
+                                                    </Style>
+                                                </DataGridTemplateColumn.HeaderStyle>
+                                                <!-- ComboBox éditable toujours affiché : la liste (PathOptions) est
+                                                     filtrée selon la Source de la ligne et se met à jour dès que
+                                                     Source change. -->
+                                                <!-- TextBox (saisie fiable) + ComboBox de suggestions filtrées.
+                                                     Choisir une suggestion remplit le TextBox ; la saisie libre
+                                                     reste toujours possible. -->
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <DockPanel LastChildFill="True">
+                                                            <!-- déroulant de suggestions : ne se lie PAS à Path
+                                                                 (sinon il l'écrase avec null au chargement). Il
+                                                                 remplit le TextBox seulement sur sélection utilisateur. -->
+                                                            <ComboBox DockPanel.Dock="Right" Width="22"
+                                                                      ToolTip="Pick a path from the sample XML (filtered by Source)"
+                                                                      ItemsSource="{Binding PathOptions}"
+                                                                      SelectionChanged="PathSuggestion_SelectionChanged" />
+                                                            <TextBox Text="{Binding Path, UpdateSourceTrigger=PropertyChanged}"
+                                                                     BorderThickness="0" VerticalContentAlignment="Center" />
+                                                        </DockPanel>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+
+                                            <DataGridTextColumn Binding="{Binding DecDigits}" Width="50">
+                                                <DataGridTextColumn.HeaderStyle>
+                                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridHeader}">
+                                                        <Setter Property="Content" Value="Dec." />
+                                                        <Setter Property="ToolTip" Value="For Type = amount: number of decimal places (e.g. 2 → 1234,00)." />
+                                                    </Style>
+                                                </DataGridTextColumn.HeaderStyle>
+                                            </DataGridTextColumn>
+
+                                            <DataGridCheckBoxColumn Binding="{Binding AbsoluteValue}" Width="40">
+                                                <DataGridCheckBoxColumn.HeaderStyle>
+                                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridHeader}">
+                                                        <Setter Property="Content" Value="Abs" />
+                                                        <Setter Property="ToolTip" Value="For Type = amount: drop the sign (e.g. -1250 → 1250). Useful when the target expects unsigned amounts." />
+                                                    </Style>
+                                                </DataGridCheckBoxColumn.HeaderStyle>
+                                            </DataGridCheckBoxColumn>
+
+                                            <DataGridTextColumn Binding="{Binding InFormat}" Width="90">
+                                                <DataGridTextColumn.HeaderStyle>
+                                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridHeader}">
+                                                        <Setter Property="Content" Value="Date in" />
+                                                        <Setter Property="ToolTip" Value="For Type = date: the input date format found in the XML (e.g. yyyy-MM-dd). The output format is set per channel." />
+                                                    </Style>
+                                                </DataGridTextColumn.HeaderStyle>
+                                            </DataGridTextColumn>
+
+                                            <DataGridTextColumn Binding="{Binding OnlyWhenPath}" Width="110">
+                                                <DataGridTextColumn.HeaderStyle>
+                                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridHeader}">
+                                                        <Setter Property="Content" Value="Only when (path)" />
+                                                        <Setter Property="ToolTip" Value="Optional. Write this field only when the given line path (e.g. PostingType) equals the 'equals' value. Leave empty to always write. Used for Vendor/Ledger lines with different columns." />
+                                                    </Style>
+                                                </DataGridTextColumn.HeaderStyle>
+                                            </DataGridTextColumn>
+
+                                            <DataGridTextColumn Binding="{Binding OnlyWhenEquals}" Width="90">
+                                                <DataGridTextColumn.HeaderStyle>
+                                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridHeader}">
+                                                        <Setter Property="Content" Value="equals" />
+                                                        <Setter Property="ToolTip" Value="Value the 'Only when (path)' node must equal for this field to be written (e.g. Credit or Debit)." />
+                                                    </Style>
+                                                </DataGridTextColumn.HeaderStyle>
+                                            </DataGridTextColumn>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </DockPanel>
+                            </GroupBox>
+
+                            <GroupBox Header="Sample XML &amp; preview" Style="{StaticResource Section}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="160" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Margin="0,0,0,4" VerticalAlignment="Center"
+                                               Text="Sample input XML (loaded above, editable here)" />
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="Generated output" Margin="6,0,0,4"
+                                               VerticalAlignment="Center" />
+
+                                    <!-- lié au SampleXml DU CANAL (DataContext = SelectedChannel) -->
+                                    <TextBox Grid.Row="1" Grid.Column="0" AcceptsReturn="True"
+                                             VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="11"
+                                             Text="{Binding SampleXml, UpdateSourceTrigger=PropertyChanged}"
+                                             ToolTip="Paste a representative input XML, or use Load from file. It feeds both the preview and the Path auto-completion." />
+                                    <TextBox Grid.Row="1" Grid.Column="1" IsReadOnly="True" Margin="6,0,0,0"
+                                             VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="11"
+                                             Background="{DynamicResource MahApps.Brushes.Control.Background}"
+                                             Text="{Binding DataContext.PreviewOutput, RelativeSource={RelativeSource AncestorType=Window}}" />
+
+                                    <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal" Margin="0,6,0,0">
+                                        <Button Content="Refresh paths" Width="110" Margin="0,0,4,0" Click="RefreshPaths"
+                                                ToolTip="Re-scan the sample XML to update the Path drop-down." />
+                                        <Button Content="Preview" Width="90"
+                                                Command="{Binding DataContext.PreviewCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                    </StackPanel>
+                                </Grid>
+                            </GroupBox>
+
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+        </TabControl>
+    </DockPanel>
+</mah:MetroWindow>

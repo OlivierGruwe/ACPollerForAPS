@@ -16,8 +16,8 @@ namespace ConversionService
 
             var service = new ServiceInstaller
             {
-                ServiceName = "ACTxt2Xml",
-                DisplayName = "ACTxt2Xml Conversion Service (TXT<->XML)",
+                ServiceName = "ACPollerForAPS",
+                DisplayName = "ACPollerForAPS Conversion Service (TXT<->XML)",
                 Description = "Convertit les fichiers TXT en XML et inversement (multithread).",
                 StartType = ServiceStartMode.Automatic
             };

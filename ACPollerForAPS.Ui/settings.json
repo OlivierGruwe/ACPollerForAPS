@@ -1,0 +1,207 @@
+{
+  "Pipeline": {
+    "InputFolder": "C:\\ACPoller\\In",
+    "ArchiveFolder": "C:\\ACPoller\\Archive",
+    "ErrorFolder": "C:\\ACPoller\\Error",
+    "ArchiveEnabled": true,
+    "FileFilter": "*.xml",
+    "StableCheckMs": 1000,
+    "RecordPath": "/InvoiceData",
+    "BuyerPath": "Header/Buyer/BuyerId",
+    "Schedule": {
+      "IntervalValue": 24,
+      "IntervalUnit": "Hours"
+    },
+    "BatchSize": 0,
+    "Channels": [
+      {
+        "Name": "Dynamics AX",
+        "Enabled": true,
+        "Buyers": [
+          "BUYER-US-001",
+          "BUYER-US-002"
+        ],
+        "OutputFormat": "Csv",
+        "Provider": "mapping",
+        "OutputFolder": "C:\\ACPoller\\Out\\DynamicsAX",
+        "OutputFileName": "{date}.csv",
+        "RecordPath": "/InvoiceData",
+        "LinesPath": "AccountingLines/AccountingLine",
+        "WriteRecordEvenIfNoLines": false,
+        "SampleXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<InvoiceData>\n  <Header>\n    <InvoiceNumber>INV-2026-89412</InvoiceNumber>\n    <InvoiceDate>2026-08-15</InvoiceDate>\n    <DueDate>2026-09-14</DueDate>\n    <Currency>USD</Currency>\n    <Buyer><BuyerId>BUYER-US-001</BuyerId><CompanyCode>1000</CompanyCode></Buyer>\n    <Supplier><SupplierCode>VEND-88402</SupplierCode><SupplierName>Apex Office Supplies Inc</SupplierName></Supplier>\n  </Header>\n  <AccountingLines>\n    <AccountingLine lineNumber=\"1\"><PostingType>Credit</PostingType><GLAccount>200000</GLAccount><Amount>-1250.00</Amount><CostCenter/><ProfitCenter/><Dimensions><Dimension1>CORP</Dimension1></Dimensions></AccountingLine>\n    <AccountingLine lineNumber=\"2\"><PostingType>Debit</PostingType><GLAccount>610000</GLAccount><Amount>680.00</Amount><CostCenter>CC-4100</CostCenter><ProfitCenter>PC-100</ProfitCenter><Dimensions><Dimension1>CORP</Dimension1><Dimension2>PROJ-992</Dimension2></Dimensions></AccountingLine>\n    <AccountingLine lineNumber=\"3\"><PostingType>Debit</PostingType><GLAccount>610050</GLAccount><Amount>500.00</Amount><CostCenter>CC-4200</CostCenter><ProfitCenter>PC-100</ProfitCenter><Dimensions><Dimension1>CORP</Dimension1><Dimension2>PROJ-992</Dimension2></Dimensions></AccountingLine>\n  </AccountingLines>\n</InvoiceData>\n",
+        "CsvFormat": {
+          "Delimiter": ",",
+          "Quote": "\"",
+          "QuoteAllFields": false,
+          "DecimalSeparator": ",",
+          "DateFormat": "dd.MM.yyyy",
+          "WriteHeader": false,
+          "Encoding": "UTF-8"
+        },
+        "XmlFormat": {
+          "RootElement": "Invoices",
+          "RecordElement": "Invoice",
+          "LineElement": "Line",
+          "DecimalSeparator": ".",
+          "DateFormat": "yyyy-MM-dd",
+          "Encoding": "UTF-8"
+        },
+        "Transport": {
+          "Type": "Fs",
+          "RetryCount": 3,
+          "RetryDelayMs": 5000,
+          "Host": "",
+          "Port": 21,
+          "RemoteFolder": "/",
+          "Username": "",
+          "PasswordEncrypted": "",
+          "FtpsMode": "Explicit",
+          "ValidateCertificate": true,
+          "S3Bucket": "",
+          "S3KeyPrefix": "",
+          "S3Region": "eu-west-1",
+          "S3ServiceUrl": "",
+          "S3ForcePathStyle": false,
+          "S3AccessKey": "",
+          "S3SecretKeyEncrypted": ""
+        },
+        "Fields": [
+          {
+            "Name": "RecordType",
+            "Type": "text",
+            "Source": "fixed",
+            "Value": "101"
+          },
+          {
+            "Name": "PostingDate",
+            "Type": "date",
+            "Source": "header",
+            "Path": "Header/InvoiceDate",
+            "InFormat": "yyyy-MM-dd"
+          },
+          {
+            "Name": "DueDate",
+            "Type": "date",
+            "Source": "header",
+            "Path": "Header/DueDate",
+            "InFormat": "yyyy-MM-dd"
+          },
+          {
+            "Name": "LineType",
+            "Type": "text",
+            "Source": "line",
+            "Path": "PostingType",
+            "Values": {
+              "Credit": "Vendor",
+              "Debit": "Ledger"
+            }
+          },
+          {
+            "Name": "Account",
+            "Type": "text",
+            "Source": "line",
+            "Path": "GLAccount"
+          },
+          {
+            "Name": "Col5",
+            "Type": "text",
+            "Source": "fixed",
+            "Value": ""
+          },
+          {
+            "Name": "Col6",
+            "Type": "text",
+            "Source": "fixed",
+            "Value": ""
+          },
+          {
+            "Name": "Col7",
+            "Type": "text",
+            "Source": "fixed",
+            "Value": ""
+          },
+          {
+            "Name": "Dim8",
+            "Type": "text",
+            "Source": "line",
+            "Path": "Dimensions/Dimension2",
+            "OnlyWhenPath": "PostingType",
+            "OnlyWhenEquals": "Debit"
+          },
+          {
+            "Name": "Col9",
+            "Type": "text",
+            "Source": "fixed",
+            "Value": ""
+          },
+          {
+            "Name": "Col10",
+            "Type": "text",
+            "Source": "fixed",
+            "Value": ""
+          },
+          {
+            "Name": "InvoiceRef",
+            "Type": "text",
+            "Source": "header",
+            "Path": "Header/InvoiceNumber"
+          },
+          {
+            "Name": "Description",
+            "Type": "text",
+            "Source": "line",
+            "Path": "GLAccountDescription"
+          },
+          {
+            "Name": "Debit",
+            "Type": "amount",
+            "Source": "line",
+            "Path": "Amount",
+            "DecDigits": 2,
+            "AbsoluteValue": true,
+            "OnlyWhenPath": "PostingType",
+            "OnlyWhenEquals": "Debit"
+          },
+          {
+            "Name": "Credit",
+            "Type": "amount",
+            "Source": "line",
+            "Path": "Amount",
+            "DecDigits": 2,
+            "AbsoluteValue": true,
+            "OnlyWhenPath": "PostingType",
+            "OnlyWhenEquals": "Credit"
+          },
+          {
+            "Name": "Currency",
+            "Type": "text",
+            "Source": "header",
+            "Path": "Header/Currency"
+          },
+          {
+            "Name": "APcode",
+            "Type": "text",
+            "Source": "line",
+            "Path": "Dimensions/Dimension1",
+            "OnlyWhenPath": "PostingType",
+            "OnlyWhenEquals": "Debit"
+          },
+          {
+            "Name": "GLdim",
+            "Type": "text",
+            "Source": "fixed",
+            "Value": ""
+          },
+          {
+            "Name": "VendorCtrl",
+            "Type": "text",
+            "Source": "fixed",
+            "Value": "600082",
+            "OnlyWhenPath": "PostingType",
+            "OnlyWhenEquals": "Credit"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <RootNamespace>ACPollerForAPS.Core</RootNamespace>
+    <AssemblyName>ACPollerForAPS.Core</AssemblyName>
+    <LangVersion>7.3</LangVersion>
+    <BaseOutputPath>D:\devs\ACPollerForAPS\bin</BaseOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- DPAPI (ProtectedData) pour le chiffrement des credentials -->
+    <Reference Include="System.Security" />
+  </ItemGroup>
+
+</Project>

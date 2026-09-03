@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <RootNamespace>PipelineConfigWpf</RootNamespace>
+    <AssemblyName>ACPollerForAPS.UI</AssemblyName>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <LangVersion>7.3</LangVersion>
+    <ApplicationIcon>a_71x_icon.ico</ApplicationIcon>
+    <GenerateDocumentationFile>False</GenerateDocumentationFile>
+
+    <!-- Sortie directe dans D:\devs\ACPollerForAPS\bin (pas de sous-dossiers) -->
+    <OutputPath>D:\devs\ACPollerForAPS\bin\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AWSSDK.S3" Version="4.0.102.4" />
+    <PackageReference Include="MahApps.Metro" Version="2.4.10" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <!-- FluentFTP : uniquement pour le bouton "Test connection" FTPS -->
+    <PackageReference Include="FluentFTP" Version="52.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- DLL partagée : modèle + moteur + validation (mêmes classes que le service) -->
+    <ProjectReference Include="..\ACPollerForAPS.Core\ACPollerForAPS.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Logo Arondor du header. Déposer arondor_logo.png à la racine du projet ;
+         Build Action = Resource (embarqué dans l'exe). -->
+    <Resource Include="arondor_logo.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="settings.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>
