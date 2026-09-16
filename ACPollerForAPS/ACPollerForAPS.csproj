@@ -73,7 +73,10 @@
          En SDK-style, le GUID n'est pas requis ; VS le renseigne à l'ajout.
          Le plus simple : dans VS, clic droit sur le projet service ->
          Ajouter -> Référence -> Projets -> cocher ACPollerForAPS.Core. -->
-    <ProjectReference Include="..\ACPollerForAPS.Core\ACPollerForAPS.Core.csproj" />
+    <ProjectReference Include="..\ACPollerForAPS.Core\ACPollerForAPS.Core.csproj">
+      <Project>{29F839D5-B1FE-A39E-98DC-409BF24D5335}</Project>
+      <Name>ACPollerForAPS.Core</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

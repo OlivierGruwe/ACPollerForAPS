@@ -1,4 +1,17 @@
 <Solution>
+  <Folder Name="/Éléments de solution/">
+    <File Path="installer/ACPollerForAPS.nsi" />
+  </Folder>
+  <Folder Name="/Éléments de solution/installer/">
+    <File Path="installer/ACPollerForAPS.nsi" />
+  </Folder>
+  <Folder Name="/Éléments de solution/installer/assets/">
+    <File Path="installer/assets/acpoller.ico" />
+    <File Path="installer/assets/BUILD.md" />
+    <File Path="installer/assets/header.bmp" />
+    <File Path="installer/assets/splash.bmp" />
+    <File Path="installer/assets/welcome.bmp" />
+  </Folder>
   <Project Path="ACPollerForAPS.Core/ACPollerForAPS.Core.csproj" />
   <Project Path="ACPollerForAPS.Ui/PipelineConfigWpf.csproj" />
   <Project Path="ACPollerForAPS/ACPollerForAPS.csproj" Id="f8076ce5-8ba5-4b81-baaa-ff376b1cd942" />
