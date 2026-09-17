@@ -10,6 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- DPAPI (ProtectedData) pour le chiffrement des credentials -->
     <Reference Include="System.Security" />
   </ItemGroup>

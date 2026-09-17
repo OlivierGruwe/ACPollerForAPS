@@ -5,167 +5,171 @@ using System.Linq;
 namespace PipelineConfigWpf
 {
     /// <summary>
-    /// Offline help assistant (no AI, no network). A hand-written Q/A knowledge
-    /// base plus a keyword matcher. Extend freely by adding entries to Entries.
+    /// Assistant d'aide hors-ligne (sans IA) : associe la question de
+    /// l'utilisateur à la meilleure entrée de FAQ par mots-clés. Entièrement
+    /// local — aucun appel réseau. Le contenu reflète le produit actuel
+    /// (pipelines, bidirectionnel, chemins imbriqués, sommes, dashboard).
     /// </summary>
-    public static class HelpBot
+    public class HelpBot
     {
         public class Entry
         {
-            public string Title;              // sample question (shown as suggestion)
-            public string[] Keywords;         // keywords used for matching
-            public string Answer;             // the answer
+            public string[] Keywords;
+            public string Answer;
         }
 
-        // Shown when nothing matches
-        public const string Fallback =
-            "I don't have a precise answer to that. Try rephrasing, or pick one of "
-            + "the frequently asked questions below. You can also check the product "
-            + "README for details.";
-
-        public static readonly List<Entry> Entries = new List<Entry>
+        private static readonly List<Entry> _entries = new List<Entry>
         {
             new Entry {
-                Title = "What is Buyer routing for?",
-                Keywords = new[] { "routing", "buyer", "route", "channel", "dispatch" },
-                Answer =
-                    "Each input XML carries a Buyer value (its path is set by 'Buyer path' "
-                    + "in the General tab). The service reads it and sends the invoice to the "
-                    + "channel whose 'Buyers' list contains that value. This is how a single "
-                    + "input flow is dispatched to different ERPs (Dynamics, Optima…)."
+                Keywords = new[]{"pipeline","what","concept","overview","start"},
+                Answer = "A pipeline is one input folder → one transformation → one output. "
+                       + "Each pipeline is autonomous (its own folder, schedule and output). "
+                       + "Run several side by side, e.g. one per direction (APS→Optima and Optima→APS). "
+                       + "Add or select pipelines with the selector at the top of the window."
             },
             new Entry {
-                Title = "What does 'Invoices per file' (BatchSize) do?",
-                Keywords = new[] { "batch", "invoices per file", "split", "number", "invoices", "file", "per file" },
-                Answer =
-                    "It's the max number of invoices per output file, PER CHANNEL. "
-                    + "0 = all invoices of the channel in a single file. "
-                    + "Example: 5 with 30 invoices => 6 output files of 5 invoices each, "
-                    + "generated in the same run."
+                Keywords = new[]{"add","create","new","pipeline"},
+                Answer = "Use the pipeline selector bar at the top: Add creates a new pipeline, "
+                       + "Copy duplicates the current one, Remove deletes it. Then fill in the "
+                       + "General, Schedule and Output tabs for the selected pipeline."
             },
             new Entry {
-                Title = "How do I configure FTPS delivery?",
-                Keywords = new[] { "ftps", "ftp", "transport", "deliver", "delivery", "server", "upload" },
-                Answer =
-                    "In the channel, under 'Output transport', set Destination = Ftps. "
-                    + "Fill in host, port (21 explicit / 990 implicit), remote folder, username "
-                    + "and password. The password is encrypted (DPAPI) and never stored in clear "
-                    + "in the file. Use 'Test connection' to verify. Important: encrypt the "
-                    + "password ON THE MACHINE where the service runs."
+                Keywords = new[]{"output","path","nested","element","imbriqu","tree","xml element"},
+                Answer = "In the mapping grid, the 'Output path' is the element path in the result. "
+                       + "For nested XML use '/', e.g. NAGLOWEK/SPRZEDAWCA/NIP — parent nodes are "
+                       + "created and shared automatically. Two fields sharing a prefix reuse the same parent."
             },
             new Entry {
-                Title = "How does S3 delivery work?",
-                Keywords = new[] { "s3", "aws", "minio", "bucket", "cloud", "amazon" },
-                Answer =
-                    "Under 'Output transport', Destination = S3. Fill in the bucket, region "
-                    + "(or a custom endpoint for MinIO / S3-compatible), the access key and the "
-                    + "secret key (DPAPI-encrypted). 'Path-style access' is required for MinIO. "
-                    + "'Test connection' checks access to the bucket."
+                Keywords = new[]{"namespace","xmlns","comarch","optima"},
+                Answer = "Set the output namespace in the XML format section (Namespace / xmlns). "
+                       + "For Comarch Optima use http://www.cdn.com.pl/optima/dokument. When reading "
+                       + "a namespaced input, namespaces are neutralized automatically so your paths stay simple."
             },
             new Entry {
-                Title = "What does the mapping 'Source' column mean?",
-                Keywords = new[] { "source", "source column", "fixed", "header", "line", "xpath", "where value", "comes from" },
-                Answer =
-                    "Source tells where a field's value comes from:\n"
-                    + "• fixed: a constant value (in Value)\n"
-                    + "• header / xpath: a node of the invoice (path in Path)\n"
-                    + "• line: a node of the current accounting line (path in Path)\n"
-                    + "The Path suggestion list is filtered by Source."
+                Keywords = new[]{"sum","total","aggregate","razem","addition","somme"},
+                Answer = "To total line values into a header total (e.g. RAZEM_NETTO), set the field "
+                       + "Source to 'sum' and its Path to a line node (e.g. WARTOSC_NETTO). It adds that "
+                       + "value across all lines of the record. It respects 'Only when', so you can total "
+                       + "a subset of lines (e.g. only debit lines)."
             },
             new Entry {
-                Title = "How do I handle Vendor and Ledger lines (Dynamics)?",
-                Keywords = new[] { "vendor", "ledger", "conditional", "only when", "debit", "credit", "dynamics", "postingtype" },
-                Answer =
-                    "Use the 'Only when (path)' and 'equals' columns in the mapping. A field is "
-                    + "written only when a node of the line (e.g. PostingType) equals a value "
-                    + "(e.g. Credit). Example: the Credit column -> Only when PostingType = Credit; "
-                    + "the Debit column -> Only when PostingType = Debit. This produces one Vendor "
-                    + "line and N Ledger lines with different columns."
+                Keywords = new[]{"line","number","index","lp","position"},
+                Answer = "For a line number (1,2,3…), add a 'line' field whose Path is the special "
+                       + "value #index. It outputs the current line's position."
             },
             new Entry {
-                Title = "What is the 'Provider' field and how do I build a DLL?",
-                Keywords = new[] { "provider", "plugin", "dll", "library", "extension", "ierpexporter", "specific", "custom" },
-                Answer =
-                    "'Provider' decides HOW the output file is generated for a channel:\n\n"
-                    + "• 'mapping' (default): uses the configurable field mapping in the UI. "
-                    + "Enough for most ERPs (CSV/XML describable by the field table).\n\n"
-                    + "• a custom provider: for an ERP with special logic (aggregations, unusual "
-                    + "structure), you supply a dedicated DLL. You then put its name in this field.\n\n"
-                    + "Building a provider DLL:\n"
-                    + "1. New 'class library' project (.NET 4.8) referencing ACPollerForAPS.Core.\n"
-                    + "2. Create a class implementing the IErpExporter interface:\n"
-                    + "   - IEnumerable<string> ProviderNames => new[] { \"myerp\" };  (name(s) to use in the Provider field)\n"
-                    + "   - ExportResult Export(IEnumerable<string> inputXmls, OutputChannel channel);  (produces the file)\n"
-                    + "3. In Export, fill result.Content (byte[] of the file) and optionally result.Warnings.\n"
-                    + "4. Compile the DLL and drop it in the 'providers/' folder next to the service exe.\n"
-                    + "5. The service discovers it automatically at startup (a broken DLL is logged and ignored).\n\n"
-                    + "The provider only handles content generation: Buyer routing, merge, transport "
-                    + "(FS/FTPS/S3) and archiving stay common. See PROVIDERS.md."
+                Keywords = new[]{"wrapper","lines","pozycje","container","group lines"},
+                Answer = "The 'Line wrapper' (XML format section) is an optional container around all "
+                       + "lines, e.g. POZYCJE wraps the POZYCJA elements. Leave it empty to add lines "
+                       + "directly under the record element."
             },
             new Entry {
-                Title = "How do I test my configuration?",
-                Keywords = new[] { "test", "preview", "check", "verify", "validate" },
-                Answer =
-                    "Load a 'Sample XML' into the channel (button in Channel settings), then click "
-                    + "'Preview': you see the generated output file. The 'Validate' button (toolbar) "
-                    + "checks the whole configuration and reports errors and warnings before saving."
+                Keywords = new[]{"only when","condition","vendor","ledger","credit","debit"},
+                Answer = "Conditional write: set 'Only when (path)' and 'equals' on a field so it is "
+                       + "written only when a line node matches (e.g. PostingType = Debit). Otherwise the "
+                       + "field stays empty. Useful for Vendor/Ledger style lines."
             },
             new Entry {
-                Title = "Does the service pick up my changes automatically?",
-                Keywords = new[] { "service", "restart", "reload", "change", "apply", "pick up" },
-                Answer =
-                    "No: the service reads settings.json once, at startup. After a change made "
-                    + "through this UI, RESTART the service (sc stop / sc start, or the Services "
-                    + "manager) so it picks up the new configuration."
+                Keywords = new[]{"source","fixed","header","line","xpath","mapping"},
+                Answer = "Field Source: 'fixed' = a constant (Value); 'header'/'xpath' = a value from the "
+                       + "record; 'line' = a value from the current line; 'sum' = a total over the lines. "
+                       + "The Path is the input XPath; suggestions are filtered by Source."
             },
             new Entry {
-                Title = "Where are the logs and how do I read them?",
-                Keywords = new[] { "log", "logs", "journal", "error", "diagnostic", "trace" },
-                Answer =
-                    "Logs are in the 'logs/' folder next to the service exe. Each run writes a start "
-                    + "line, per-file detail, and a summary (delivered, errors…). For detailed "
-                    + "diagnostics, set the log level to 'Debug' in NLog.config (no recompilation), "
-                    + "then switch back to 'Info'."
+                Keywords = new[]{"amount","decimal","date","format","absolute"},
+                Answer = "Type 'amount' formats numbers (decimals, and Abs drops the sign). Type 'date' "
+                       + "reparses using 'Date in' (the input format) and outputs in the XML/CSV date format. "
+                       + "Decimal separator and date format are set in the XML/CSV format section."
             },
             new Entry {
-                Title = "How often does the service process files?",
-                Keywords = new[] { "schedule", "interval", "how often", "when", "frequency", "rate", "24h" },
-                Answer =
-                    "Schedule tab: the service runs at a regular interval (minutes or hours). "
-                    + "Each run processes everything present. Note: a 24h interval means one run "
-                    + "per day — for testing, set a few minutes."
+                Keywords = new[]{"encoding","utf","charset"},
+                Answer = "Set the output Encoding in the XML format section (UTF-8 by default). This "
+                       + "controls the <?xml ... encoding=\"...\"?> declaration of the generated file."
             },
+            new Entry {
+                Keywords = new[]{"transport","ftps","s3","deliver","destination","folder"},
+                Answer = "Each pipeline delivers through a transport: FS (a folder), FTPS, or S3 "
+                       + "(incl. MinIO/S3-compatible). Configure it in the Output transport section, with "
+                       + "retry count and delay. Credentials are encrypted (DPAPI) on the target machine."
+            },
+            new Entry {
+                Keywords = new[]{"pending","retry","failed","delivery","queue","perdu","lost"},
+                Answer = "If a delivery fails after all retries, the generated file is queued under "
+                       + "pending/<pipeline>/ and the sources are archived normally — nothing is lost. "
+                       + "The service retries the queue at the start of every run, so delivery completes "
+                       + "as soon as the target is reachable again."
+            },
+            new Entry {
+                Keywords = new[]{"preview","test","result","output"},
+                Answer = "Load a Sample XML in the Output tab, then click Preview to see the generated "
+                       + "result. Refresh paths re-scans the sample for path auto-completion. Validate "
+                       + "(toolbar) checks every pipeline before saving."
+            },
+            new Entry {
+                Keywords = new[]{"dashboard","stats","monitor","volume","error rate","history"},
+                Answer = "The Dashboard tab shows an operations overview from the run history in stats/: "
+                       + "summary cards (runs, files, delivered, pending, error rate), a files-per-day chart, "
+                       + "and a per-pipeline table. Choose 7/30/90 days and Refresh. It fills in as the "
+                       + "service processes files."
+            },
+            new Entry {
+                Keywords = new[]{"provider","plugin","dll","custom","erp"},
+                Answer = "Most targets use the default 'mapping' provider (no code). For special logic, "
+                       + "drop a DLL implementing IErpExporter into the providers/ folder next to the "
+                       + "service and set the pipeline's Provider to its name. See PROVIDERS.md."
+            },
+            new Entry {
+                Keywords = new[]{"service","start","stop","restart","install","1064"},
+                Answer = "Manage the service with 'sc start ACPollerForAPS' / 'sc stop ACPollerForAPS'. "
+                       + "Restart it after changing settings.json (it reads config at startup). "
+                       + "If it won't start (error 1064), check settings.json exists next to the exe and the logs."
+            },
+            new Entry {
+                Keywords = new[]{"save","settings","config","json","file"},
+                Answer = "The UI and the service share one settings.json ({ \"Pipelines\": [...] }). "
+                       + "Save writes it; the service must be restarted to apply changes. Validate checks it first."
+            },
+            new Entry {
+                Keywords = new[]{"log","logs","nlog","diagnostic","debug"},
+                Answer = "Logs are in logs/ next to the service exe (rotated and purged). For diagnostics, "
+                       + "set the level to Debug in NLog.config, reproduce, then set it back to Info."
+            },
+            new Entry {
+                Keywords = new[]{"event","monitoring","nagios","zabbix","supervision"},
+                Answer = "The service writes to a dedicated Windows event log 'ACPollerForAPS' "
+                       + "(source ACPollerForAPS.Service): start/stop, run summaries, warnings and errors. "
+                       + "Enterprise monitors (Nagios, Zabbix, Centreon) read it natively."
+            }
         };
 
-        /// <summary>Finds the best answer to a question (keyword matching).</summary>
+        public static List<string> SuggestedQuestions => new List<string>
+        {
+            "What is a pipeline?",
+            "How do I output nested XML elements?",
+            "How do I set the Optima namespace?",
+            "How do I total line amounts (sums)?",
+            "What happens if a delivery fails?",
+            "What does the Dashboard show?",
+            "How do I use a custom ERP provider?"
+        };
+
+        private const string Fallback =
+            "I'm a simple offline assistant. Try keywords like: pipeline, output path, namespace, "
+          + "sum, transport, pending, preview, dashboard, provider, service, logs. For full details, "
+          + "open the Manual (toolbar).";
+
+        /// <summary>Retourne la meilleure réponse pour la question posée.</summary>
         public static string Answer(string question)
         {
             if (string.IsNullOrWhiteSpace(question)) return Fallback;
-            var q = Normalize(question);
-
-            Entry best = null;
-            int bestScore = 0;
-            foreach (var e in Entries)
+            var q = question.ToLowerInvariant();
+            Entry best = null; int bestScore = 0;
+            foreach (var e in _entries)
             {
-                int score = 0;
-                foreach (var kw in e.Keywords)
-                    if (q.Contains(Normalize(kw))) score++;
+                int score = e.Keywords.Count(k => q.Contains(k.ToLowerInvariant()));
                 if (score > bestScore) { bestScore = score; best = e; }
             }
             return best != null && bestScore > 0 ? best.Answer : Fallback;
         }
-
-        private static string Normalize(string s)
-        {
-            s = (s ?? "").ToLowerInvariant();
-            // strip common accents for tolerant matching (FR users may type accents)
-            s = s.Replace("é", "e").Replace("è", "e").Replace("ê", "e")
-                 .Replace("à", "a").Replace("â", "a").Replace("ô", "o")
-                 .Replace("û", "u").Replace("î", "i").Replace("ç", "c");
-            return s;
-        }
-
-        /// <summary>Titles, to offer clickable suggested questions.</summary>
-        public static IEnumerable<string> SuggestedQuestions => Entries.Select(e => e.Title);
     }
 }

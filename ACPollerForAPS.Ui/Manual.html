@@ -1,186 +1,264 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8">
-<meta http-equiv="X-UA-Compatible" content="IE=edge">
-<style type="text/css">
-  body { font-family: Segoe UI, Arial, sans-serif; font-size: 13px; color: #2b2f33; line-height: 1.5; margin: 0; padding: 16px; }
-  h1 { color: #5B6770; font-size: 22px; margin: 0 0 4px 0; }
-  .sub { color: #29ABE2; font-size: 13px; margin-bottom: 18px; }
-  h2 { color: #ffffff; background: #29ABE2; font-size: 15px; padding: 5px 9px; margin: 22px 0 10px 0; }
-  h3 { color: #29ABE2; font-size: 14px; margin: 16px 0 5px 0; }
-  h4 { color: #5B6770; font-size: 12.5px; margin: 12px 0 3px 0; }
-  table { border-collapse: collapse; width: 100%; margin: 8px 0; }
-  th { background: #29ABE2; color: #fff; text-align: left; padding: 4px 7px; font-size: 12px; }
-  td { border: 1px solid #D4DADE; padding: 3px 7px; font-size: 12px; vertical-align: top; }
-  code { background: #F0F2F4; padding: 1px 3px; font-family: Consolas, monospace; font-size: 12px; color: #c7254e; }
-  pre { background: #F7F9FA; border: 1px solid #D4DADE; border-left: 3px solid #29ABE2; padding: 8px; font-family: Consolas, monospace; font-size: 12px; white-space: pre-wrap; }
-  blockquote { border-left: 3px solid #29ABE2; margin: 8px 0; padding: 5px 11px; background: #F4F6F8; color: #5B6770; }
-  .nav { background: #F4F6F8; border: 1px solid #D4DADE; padding: 8px 12px; margin-bottom: 16px; }
-  .nav a { color: #29ABE2; text-decoration: none; margin-right: 14px; font-size: 12px; }
+<html lang="en"><head><meta charset="utf-8">
+<style>
+  @page { margin: 2cm 1.8cm; }
+  body { font-family: 'Segoe UI','DejaVu Sans',Arial,sans-serif; font-size: 10.5px; color: #2b2f33; line-height: 1.55; }
+  h1 { color: #5B6770; font-size: 26px; margin: 0 0 4px 0; }
+  h2 { color: #FFFFFF; background: #29ABE2; font-size: 16px; padding: 6px 10px; margin: 26px 0 12px 0; border-radius: 3px; }
+  h3 { color: #29ABE2; font-size: 13.5px; margin: 18px 0 6px 0; }
+  h4 { color: #5B6770; font-size: 11.5px; margin: 14px 0 4px 0; }
+  p { margin: 6px 0; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 9.5px; }
+  th { background: #29ABE2; color: white; text-align: left; padding: 5px 8px; }
+  td { border: 1px solid #D4DADE; padding: 4px 8px; vertical-align: top; }
+  tr:nth-child(even) { background: #F4F6F8; }
+  code { background: #F0F2F4; padding: 1px 4px; border-radius: 3px; font-family: 'Consolas','DejaVu Sans Mono',monospace; font-size: 9.5px; color: #c7254e; }
+  pre { background: #F7F9FA; border: 1px solid #D4DADE; border-left: 3px solid #29ABE2; padding: 9px; border-radius: 4px; font-size: 9px; white-space: pre-wrap; }
+  pre code { background: none; color: #2b2f33; padding: 0; }
+  blockquote { border-left: 3px solid #29ABE2; margin: 10px 0; padding: 6px 12px; background: #F4F6F8; color: #5B6770; }
+  hr { border: none; border-top: 1px solid #D4DADE; margin: 16px 0; }
+  .toc a { color: #2b2f33; text-decoration: none; }
+  .toc li { margin: 3px 0; }
+  .tag { display: inline-block; background: #5B6770; color: white; font-size: 8.5px; padding: 1px 6px; border-radius: 8px; vertical-align: middle; }
 </style></head><body>
 
-<h1>ACPollerForAPS</h1>
-<div class="sub">Invoice pipeline &mdash; routing, mapping and delivery &mdash; User Manual</div>
-
-<div class="nav">
-  <a href="#intro">Concepts</a>
-  <a href="#general">General</a>
-  <a href="#channel">Channel</a>
-  <a href="#mapping">Mapping</a>
-  <a href="#transport">Transports</a>
-  <a href="#providers">Providers</a>
-  <a href="#ops">Operations</a>
+<h2>Contents</h2>
+<div class="toc">
+<ol>
+  <li><a href="#intro">Introduction &amp; concepts</a></li>
+  <li><a href="#install">Installation &amp; startup</a></li>
+  <li><a href="#ui">The configuration interface</a></li>
+  <li><a href="#pipeline">Configuring a pipeline</a></li>
+  <li><a href="#mapping">Field mapping &amp; output paths</a></li>
+  <li><a href="#xml">Nested XML output (namespace, wrapper, sums)</a></li>
+  <li><a href="#transport">Delivery transports &amp; retry queue</a></li>
+  <li><a href="#providers">ERP Providers (plugins)</a></li>
+  <li><a href="#dashboard">Dashboard</a></li>
+  <li><a href="#ops">Operations: logs, monitoring, troubleshooting</a></li>
+</ol>
 </div>
 
-<h2 id="intro">Concepts</h2>
-<p>ACPollerForAPS converts invoices exported from APS (ReadSoft) into the format
-each destination ERP expects, and delivers them where the ERP imports them. Single
-input format (APS XML), multiple outputs depending on the Buyer.</p>
-<p>Pipeline (per scheduled run): scan the input folder &rarr; route each file to a
-channel by Buyer &rarr; merge files of the same channel &rarr; convert (CSV/XML via
-the provider) &rarr; deliver (FS/FTPS/S3) &rarr; archive sources only if delivery
-succeeded.</p>
-<p>The service and the UI share a single <code>settings.json</code>
-(<code>{ "Pipeline": { ... } }</code>). The service reads it at startup.</p>
-<blockquote>After a change through the UI, restart the service so it picks up the new
-configuration.</blockquote>
+<h2 id="intro">1. Introduction &amp; concepts</h2>
+<p><strong>ACPollerForAPS</strong> is an XML integration engine that transforms
+invoice and document data between systems by configuration, with no custom code.
+It reads an XML file, maps it to the structure a target system expects, and delivers
+it. Typical use: exchange data between AP Essentials (APS/ReadSoft) and one or more
+ERPs (Dynamics AX, Comarch Optima).</p>
 
-<h2 id="general">General tab</h2>
+<h3>Pipelines</h3>
+<p>The core concept is the <strong>pipeline</strong>: <strong>one input folder &rarr;
+one transformation &rarr; one output</strong>. Each pipeline is autonomous, with its
+own watched folder, schedule and output. You can run several pipelines side by side &mdash;
+for example one for each direction of an exchange:</p>
+<ul>
+  <li><strong>APS &rarr; Optima</strong>: reads AP Essentials invoices, produces Comarch
+      Optima XML, drops it where Optima imports it.</li>
+  <li><strong>Optima &rarr; APS</strong>: reads Optima exports, produces AP Essentials XML.</li>
+</ul>
+<blockquote>A pipeline does one thing end to end. Different rhythms or different
+formats simply mean different pipelines &mdash; there is no routing to configure.</blockquote>
+
+<h3>Architecture</h3>
+<table>
+<tr><th>Component</th><th>Role</th></tr>
+<tr><td><strong>ACPollerForAPS.Core</strong> (DLL)</td><td>Shared model, transformation engine, validation, encryption, stats. Referenced by both the service and the UI &mdash; a single source of truth.</td></tr>
+<tr><td><strong>ACPollerForAPS.Service.exe</strong></td><td>The Windows service that runs the pipelines.</td></tr>
+<tr><td><strong>ACPollerForAPS.UI.exe</strong></td><td>The configuration interface (WPF).</td></tr>
+</table>
+
+<h3>The configuration file</h3>
+<p>The service and the UI share a single <code>settings.json</code>, structured as
+<code>{ "Pipelines": [ ... ] }</code>. The service reads it at startup and runs one
+worker per pipeline; the UI loads it automatically and edits it.</p>
+<blockquote>The service reads the configuration once, at startup. After a change
+through the UI, <strong>restart the service</strong> so it picks up the new config.</blockquote>
+
+<h2 id="install">2. Installation &amp; startup</h2>
+<h3>Prerequisites</h3>
+<ul>
+  <li>.NET Framework 4.8 runtime on the target machine.</li>
+  <li>Administrator rights (Windows service + Event Log).</li>
+</ul>
+<h3>Installer</h3>
+<p>Run the setup (<code>ACPollerForAPS-Setup-2.0.0.exe</code>). It asks for the
+install directory and lets you choose components &mdash; the <strong>Service</strong>
+and the <strong>Configuration interface</strong>. The installer stops any running
+service/UI first, copies the files, installs the service (which also creates the
+Windows Event Log source) and starts it. A default <code>settings.json</code> is
+deployed only if none exists, so the service can start on a fresh machine.</p>
+<blockquote>The uninstaller stops the service and the UI, removes the binaries and the
+service, but keeps <code>logs\</code>, <code>stats\</code>, <code>pending\</code> and
+<code>settings.json</code>, so configuration and history survive an upgrade.</blockquote>
+
+<h2 id="ui">3. The configuration interface</h2>
+<p>The window has a branded header, a toolbar (New, Open, Save, Save as, Validate on
+the left; Dark theme, Help, Manual on the right), a <strong>pipeline selector</strong>
+bar, and tabs: General, Schedule, Output, Dashboard.</p>
+<p>The pipeline selector (top) lists all pipelines with Add / Remove / Copy. Pick one
+and the tabs below show that pipeline.</p>
+
+<h2 id="pipeline">4. Configuring a pipeline</h2>
+<h3>General tab</h3>
 <table>
 <tr><th>Field</th><th>Meaning</th></tr>
-<tr><td>Input folder</td><td>Folder watched for incoming APS XML files.</td></tr>
-<tr><td>Archive folder</td><td>Where processed files go (dated) after successful delivery.</td></tr>
-<tr><td>Error folder</td><td>Where unroutable/unreadable files go for review.</td></tr>
+<tr><td>Pipeline name</td><td>A label; shown in the selector and the logs.</td></tr>
+<tr><td>Input folder</td><td>Folder the service watches for incoming XML files.</td></tr>
+<tr><td>Archive folder</td><td>Where processed files are moved after successful delivery.</td></tr>
+<tr><td>Error folder</td><td>Where unreadable files are moved for review.</td></tr>
 <tr><td>Archiving enabled</td><td>If off, sources are deleted instead of archived.</td></tr>
-<tr><td>File filter</td><td>Which files to pick up (e.g. *.xml).</td></tr>
-<tr><td>Stability check (ms)</td><td>Delay to confirm a file is fully written.</td></tr>
-<tr><td>Record path</td><td>XPath to one invoice, e.g. /InvoiceData.</td></tr>
-<tr><td>Buyer path</td><td>XPath (relative to record) to the value selecting the channel.</td></tr>
+<tr><td>File filter</td><td>Which files to pick up (e.g. <code>*.xml</code>).</td></tr>
+<tr><td>Stability check (ms)</td><td>Delay to confirm a file is fully written before processing.</td></tr>
+<tr><td>Record path</td><td>XPath to a single record (invoice/document) in the input.</td></tr>
 </table>
-
-<h3>Schedule</h3>
+<h3>Schedule tab</h3>
 <p>Run interval (minutes or hours). Each run processes everything present.</p>
-<blockquote>A 24h interval means one run per day; for testing, set a few minutes.</blockquote>
-
-<h2 id="channel">Configuring a channel</h2>
+<h3>Output tab</h3>
+<p>Holds the single output of the pipeline: format (Csv/Xml), destination folder and
+file name, provider, sample XML, the XML/CSV format section, the transport, and the
+field mapping with preview.</p>
 <table>
 <tr><th>Field</th><th>Meaning</th></tr>
-<tr><td>Channel name / Enabled</td><td>Label; a disabled channel is ignored.</td></tr>
-<tr><td>Buyers (semicolon)</td><td>Buyer values routed to this channel.</td></tr>
 <tr><td>Output format</td><td>Csv or Xml.</td></tr>
-<tr><td>Output folder / file name</td><td>Destination and name. Tokens: {date} {time} {guid} {batch}.</td></tr>
-<tr><td>Record path / Lines path</td><td>Invoice and repeating accounting lines location.</td></tr>
-<tr><td>Provider</td><td>"mapping" (default) or a plugin DLL name.</td></tr>
-<tr><td>Sample XML</td><td>Sample input stored in the config; feeds preview and Path suggestions.</td></tr>
-<tr><td>Invoices per file</td><td>Max invoices per output file. 0 = one merged file. E.g. 5 with 30 invoices = 6 files of 5.</td></tr>
+<tr><td>Output folder / file name</td><td>Destination and name. Tokens: <code>{date} {time} {guid} {batch}</code>.</td></tr>
+<tr><td>Record path / Lines path</td><td>Record and repeating lines location in the input.</td></tr>
+<tr><td>Provider</td><td><code>mapping</code> (default) or a plugin DLL name &mdash; see section 8.</td></tr>
+<tr><td>Sample XML</td><td>A representative input, stored in the config; feeds preview and path auto-completion.</td></tr>
+<tr><td>Invoices per file</td><td>Max records per output file. <code>0</code> = one merged file.</td></tr>
 </table>
 
-<h2 id="mapping">Field mapping</h2>
+<h2 id="mapping">5. Field mapping &amp; output paths</h2>
+<p>The mapping grid defines the output fields, in order. Each field has:</p>
 <table>
 <tr><th>Property</th><th>Meaning</th></tr>
-<tr><td>Name</td><td>Output column / element name.</td></tr>
-<tr><td>Type</td><td>text; amount (decimals, Abs drops sign); date (Date in = input format).</td></tr>
-<tr><td>Source</td><td>fixed = constant (Value); header/xpath = invoice node (Path); line = current accounting line node (Path).</td></tr>
-<tr><td>Value / Path</td><td>Constant (fixed) / XPath (others). Path suggestions filtered by Source.</td></tr>
+<tr><td>Output path</td><td>The output column (CSV) or element path (XML). For nested XML, use <code>/</code> &mdash; e.g. <code>NAGLOWEK/SPRZEDAWCA/NIP</code>. Parent nodes are created and shared automatically.</td></tr>
+<tr><td>Type</td><td><code>text</code> &middot; <code>amount</code> (decimals; Abs drops the sign) &middot; <code>date</code> (Date in = input format).</td></tr>
+<tr><td>Source</td><td><code>fixed</code> = constant &middot; <code>header</code>/<code>xpath</code> = record value &middot; <code>line</code> = current line value &middot; <code>sum</code> = aggregate over lines (see below).</td></tr>
+<tr><td>Value / Path</td><td>Constant (fixed) / input XPath (others). Suggestions filtered by Source.</td></tr>
 <tr><td>Dec. / Abs</td><td>Decimals / absolute value for amounts.</td></tr>
 <tr><td>Date in</td><td>Input date format.</td></tr>
-<tr><td>Only when (path) / equals</td><td>Conditional write (see below).</td></tr>
+<tr><td>Only when (path) / equals</td><td>Conditional write: the field is written only when a line node equals a value.</td></tr>
 </table>
 
-<h3>Conditional mapping (Vendor / Ledger)</h3>
-<p>Some formats (Dynamics AX) produce one Vendor line (vendor credit) and N Ledger
-lines (debits) per invoice, with different columns per line type. A field is written
-only when a line node equals a value; otherwise the cell is empty.</p>
+<h3>Conditional mapping</h3>
+<p>Some formats produce, per record, lines of different kinds where some columns
+differ (e.g. Vendor vs Ledger lines). A field can be written only when a line node
+equals a value; otherwise it stays empty. Set <em>Only when (path)</em> and
+<em>equals</em> on the field.</p>
+
+<h3>Line numbering</h3>
+<p>A <code>line</code> field whose Path is the special value <code>#index</code>
+produces the line number (1, 2, 3&hellip;) &mdash; useful for an <code>LP</code> /
+position number.</p>
+
+<h2 id="xml">6. Nested XML output <span class="tag">key feature</span></h2>
+<p>The XML output is built from the field <strong>Output paths</strong> plus a small
+set of structural settings, so even deeply nested formats (like Comarch Optima) are
+produced by configuration alone.</p>
+<h3>Structure settings (XML format section)</h3>
 <table>
-<tr><th>Column</th><th>Only when (path)</th><th>equals</th></tr>
-<tr><td>Credit</td><td>PostingType</td><td>Credit</td></tr>
-<tr><td>Debit</td><td>PostingType</td><td>Debit</td></tr>
-<tr><td>Vendor control account</td><td>PostingType</td><td>Credit</td></tr>
+<tr><th>Setting</th><th>Role</th><th>Optima example</th></tr>
+<tr><td>Root element</td><td>The root tag.</td><td><code>ROOT</code></td></tr>
+<tr><td>Namespace (xmlns)</td><td>Default namespace on the root. Empty = none.</td><td><code>http://www.cdn.com.pl/optima/dokument</code></td></tr>
+<tr><td>Record element</td><td>Tag wrapping one record.</td><td><code>DOKUMENT</code></td></tr>
+<tr><td>Line wrapper</td><td>Optional container around all lines.</td><td><code>POZYCJE</code></td></tr>
+<tr><td>Line element</td><td>Tag wrapping one line.</td><td><code>POZYCJA</code></td></tr>
 </table>
+<p>Structural tags come from these settings; the fields only fill the content. Header
+fields are placed under the record element, line fields under the line element, each
+at its Output path.</p>
+
+<h3>Sums (aggregation)</h3>
+<p>When the input has only lines but the target needs totals (e.g. Optima's
+<code>RAZEM_NETTO</code>), a field with Source <code>sum</code> and a line Path adds
+that value across all lines of the record. It respects <em>Only when</em>, so you can
+total a subset of lines (e.g. only debit lines).</p>
+<blockquote>Not covered by sums: values that combine two fields (e.g. gross = net +
+tax at total level) or per-rate VAT tables. Map those from the input if present, or
+handle them at implementation.</blockquote>
+
+<h3>Reading nested input</h3>
+<p>Input paths can be nested too (e.g. <code>NAGLOWEK/SPRZEDAWCA/NIP</code>). Default
+namespaces in the input (as Optima uses) are neutralized automatically, so the paths
+stay simple.</p>
 
 <h3>Preview</h3>
-<p>Load a Sample XML in the channel, then click Preview to see the generated output.
-Refresh paths re-scans the sample XML. Validate (toolbar) checks the whole config.</p>
+<p>Load a Sample XML, then click <strong>Preview</strong> to see the generated
+output. <strong>Refresh paths</strong> re-scans the sample. <strong>Validate</strong>
+(toolbar) checks every pipeline.</p>
 
-<h2 id="transport">Output transports</h2>
-<p>Each channel delivers via a transport, with configurable retry. If delivery fails
-after all attempts, the generated file is moved to a pending queue
-(<code>pending/&lt;channel&gt;/</code>) and the sources are archived normally — nothing
-is lost. At the start of every run, before new files, the service retries the queued
-deliveries, so a failed delivery is completed automatically as soon as the server is
-reachable again. Pending deliveries appear in the run summary and as a warning in the
-Windows Event Log.</p>
-<h3>FS</h3><p>File written to the channel Output folder.</p>
-<h3>FTPS</h3>
+<h2 id="transport">7. Delivery transports &amp; retry queue</h2>
+<p>Each pipeline delivers its output through a transport, with configurable retry.</p>
+<h3>FS / FTPS / S3</h3>
 <table>
-<tr><th>Field</th><th>Meaning</th></tr>
-<tr><td>Host / Port</td><td>Server; 21 explicit / 990 implicit.</td></tr>
-<tr><td>Remote folder</td><td>Target folder (created if missing).</td></tr>
-<tr><td>Username / Password</td><td>Password stored encrypted (leave empty to keep current).</td></tr>
-<tr><td>FTPS mode</td><td>Explicit (FTPES) or Implicit.</td></tr>
-<tr><td>Validate certificate</td><td>Verify TLS certificate (off only for test servers).</td></tr>
-</table>
-<h3>S3 / S3-compatible</h3>
-<table>
-<tr><th>Field</th><th>Meaning</th></tr>
-<tr><td>Bucket / Key prefix</td><td>Target bucket; optional logical folder.</td></tr>
-<tr><td>Region / Endpoint</td><td>AWS region, or custom endpoint for MinIO/compatible.</td></tr>
-<tr><td>Path-style access</td><td>Required by MinIO.</td></tr>
-<tr><td>Access key / Secret key</td><td>Secret stored encrypted.</td></tr>
+<tr><th>Transport</th><th>Notes</th></tr>
+<tr><td>FS</td><td>File written to the output folder.</td></tr>
+<tr><td>FTPS</td><td>Explicit/implicit, certificate validation, encrypted password.</td></tr>
+<tr><td>S3</td><td>Bucket + key prefix; custom endpoint for MinIO/S3-compatible; encrypted secret.</td></tr>
 </table>
 <blockquote>Credentials are encrypted with DPAPI (machine scope). Encrypt on the
-target machine (the one running the service); a secret encrypted elsewhere cannot be
-decrypted there.</blockquote>
+target machine; a secret encrypted elsewhere cannot be decrypted there.</blockquote>
+<h3>Failed deliveries &amp; automatic retry</h3>
+<p>If a delivery fails after all retries, the generated file is moved to a
+<strong>pending queue</strong> (<code>pending/&lt;pipeline&gt;/</code>) and the
+sources are archived normally &mdash; nothing is lost. At the start of every run the
+service retries the queued deliveries, so the file is delivered as soon as the target
+is reachable again. Pending deliveries appear in the run summary and the Event Log.</p>
 
-<h2 id="providers">ERP Providers (plugins)</h2>
-<p>Hybrid model. Default "mapping" covers most ERPs with no DLL. For specific logic,
-ship a DLL implementing <code>IErpExporter</code> in the <code>providers/</code>
-folder next to the service exe; set the channel Provider to its name. The service
-discovers it at startup (a broken DLL is logged and ignored).</p>
-<pre>public interface IErpExporter
-{
-    IEnumerable&lt;string&gt; ProviderNames { get; }
-    ExportResult Export(IEnumerable&lt;string&gt; inputXmls, OutputChannel channel);
-}</pre>
-<p>Steps: new class library (.NET 4.8) referencing ACPollerForAPS.Core &rarr;
-implement IErpExporter &rarr; fill result.Content &rarr; compile &rarr; drop the DLL in
-providers/ &rarr; set Provider to its name. No service recompilation. See PROVIDERS.md
-for the full guide.</p>
+<h2 id="providers">8. ERP Providers (plugins) <span class="tag">advanced</span></h2>
+<p>Most targets are handled by the default <code>mapping</code> provider with no code.
+For a target whose logic the mapping cannot express, a DLL implementing
+<code>IErpExporter</code> can be dropped in the <code>providers/</code> folder next to
+the service; set the pipeline's Provider to its name. The service discovers it at
+startup; a broken DLL is logged and ignored. See PROVIDERS.md for the full guide.</p>
 
-<h2 id="ops">Operations</h2>
+<h2 id="dashboard">9. Dashboard</h2>
+<p>The Dashboard tab gives an operations overview so you can see the integration is
+running well. It reads the run history the service records in the <code>stats\</code>
+folder (one line per run).</p>
+<table>
+<tr><th>Element</th><th>Shows</th></tr>
+<tr><td>Summary cards</td><td>Runs, files processed, outputs delivered, pending, error rate over the period.</td></tr>
+<tr><td>Files per day</td><td>Volume bar chart; a bar is highlighted when that day had anomalies.</td></tr>
+<tr><td>By pipeline</td><td>Per-pipeline table: runs, files, delivered, pending, failures, average duration.</td></tr>
+<tr><td>Range / Refresh</td><td>Choose 7 / 30 / 90 days; refresh on demand.</td></tr>
+</table>
+<blockquote>The dashboard fills in as the service processes files. It reads
+<code>stats\</code> next to the service executable, so the UI sees it directly when
+both are installed together.</blockquote>
+
+<h2 id="ops">10. Operations</h2>
 <h3>Logs</h3>
-<p>NLog writes to <code>logs/</code> next to the service exe, with daily + size
-rotation and purge. Each run logs a start line, per-file detail and a summary. Set
-the level to Debug in NLog.config for diagnostics, then back to Info.</p>
-
+<p>NLog writes to <code>logs\</code> next to the service exe, with daily + size
+rotation and purge. Each run logs a start line, per-file detail and a summary. Set the
+level to <code>Debug</code> in <code>NLog.config</code> for diagnostics.</p>
 <h3>Monitoring (Windows Event Log)</h3>
-<p>The service reports to a dedicated Windows event log <code>ACPollerForAPS</code>
-(Event Viewer &rarr; Applications and Services Logs). Business events (start/stop,
-per-run summary) plus all warnings/errors, graded by severity. Any enterprise monitor
-(Nagios, Zabbix, Centreon) reads it natively.</p>
+<p>The service reports to a dedicated Windows event log <strong>ACPollerForAPS</strong>
+(source <code>ACPollerForAPS.Service</code>). Any enterprise monitor (Nagios, Zabbix,
+Centreon) reads it natively.</p>
 <table>
 <tr><th>ID</th><th>Severity</th><th>Meaning</th></tr>
 <tr><td>1000 / 1001</td><td>Information</td><td>Service started / stopped</td></tr>
-<tr><td>1100</td><td>Information</td><td>Run completed OK (summary)</td></tr>
+<tr><td>1100</td><td>Information</td><td>Run completed OK</td></tr>
 <tr><td>1200</td><td>Warning</td><td>Run completed with anomalies</td></tr>
-<tr><td>1300</td><td>Error</td><td>Delivery failure</td></tr>
+<tr><td>1300</td><td>Error</td><td>Delivery failure / files still pending</td></tr>
 </table>
-<p>PowerShell: <code>Get-EventLog -LogName ACPollerForAPS -Newest 20</code>. The event
-source is created at service installation (admin). Reinstall the service to create it.</p>
-
 <h3>Service lifecycle</h3>
-<pre>sc start ACPollerForAPS
-sc stop  ACPollerForAPS</pre>
-<p>Restart the service after changing settings.json.</p>
-
+<pre><code>sc start ACPollerForAPS
+sc stop  ACPollerForAPS</code></pre>
+<p>Restart the service after changing <code>settings.json</code>.</p>
 <h3>Troubleshooting</h3>
 <table>
 <tr><th>Symptom</th><th>Likely cause</th></tr>
-<tr><td>Service runs but processes nothing</td><td>Interval too long (waits for its slot), wrong input folder, or no channel matches the Buyer. Check the logs.</td></tr>
+<tr><td>Service installs but won't start (error 1064)</td><td>Missing <code>settings.json</code> next to the exe, or an invalid configuration. Check <code>logs\</code> and the Event Log.</td></tr>
+<tr><td>Service runs but processes nothing</td><td>Interval too long, wrong input folder, or nothing in it.</td></tr>
+<tr><td>XML paths don't match an input</td><td>For a namespaced format, paths stay simple (namespaces are neutralized) &mdash; check the path spelling against the sample.</td></tr>
+<tr><td>Output XML has the wrong encoding</td><td>Set Encoding in the XML format section (UTF-8 by default).</td></tr>
 <tr><td>FTPS/S3 secret cannot be decrypted</td><td>Encrypted on a machine other than the service's (DPAPI machine scope).</td></tr>
-<tr><td>[SC] OpenService 1060</td><td>Install failed earlier; the service does not exist.</td></tr>
+<tr><td>Files stuck in <code>pending/</code></td><td>Delivery keeps failing; files are safe and retried each run. Check transport settings and the Event Log.</td></tr>
+<tr><td>Dashboard is empty</td><td>No runs recorded yet, or the UI is not next to the service's <code>stats\</code> folder.</td></tr>
 </table>
 
-<p style="color:#7a8288;font-size:11px;text-align:center;margin-top:24px;">
-ACPollerForAPS &mdash; Arondor. Full illustrated manual available as PDF.</p>
+<hr/>
+<p style="text-align:center;color:#7a8288;font-size:9px;">ACPollerForAPS &mdash; Product Manual &mdash; Arondor</p>
 
 </body></html>

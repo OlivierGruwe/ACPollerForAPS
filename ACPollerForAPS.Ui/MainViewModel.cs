@@ -41,7 +41,11 @@ namespace PipelineConfigWpf
             PreviewCommand = new RelayCommand(DoPreview, () => SelectedPipeline != null);
 
             TryAutoLoad();
+            Dashboard = new DashboardVm();
         }
+
+        // dashboard d'exploitation (lit stats/ à côté de l'exe)
+        public DashboardVm Dashboard { get; private set; }
 
         private void TryAutoLoad()
         {

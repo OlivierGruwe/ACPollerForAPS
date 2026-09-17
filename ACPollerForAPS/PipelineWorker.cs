@@ -44,7 +44,15 @@ namespace ConversionService
                 ? _s.ArchiveFolder
                 : (_s.InputFolder ?? ".");
             _pending = new PendingStore(System.IO.Path.Combine(baseDir, "pending"));
+
+            // historique des passages : dossier stats/ PARTAGÉ, à côté de l'exe du
+            // service, pour que TOUS les pipelines y écrivent et que l'UI le lise.
+            var exeDir = System.IO.Path.GetDirectoryName(
+                System.Reflection.Assembly.GetExecutingAssembly().Location);
+            _stats = new StatsStore(System.IO.Path.Combine(exeDir, "stats"));
         }
+
+        private readonly StatsStore _stats;
 
         public void Start()
         {
@@ -138,14 +146,33 @@ namespace ConversionService
             var ch = _s.Output;
             if (ch == null) { Log.Error("{0}: pipeline sans sortie (Output null).", Name); return; }
 
-            // on ne garde que les fichiers prêts (écriture terminée)
+            // on ne garde que les fichiers PRÊTS et LISIBLES (XML bien formé).
+            // Un fichier illisible/malformé est isolé vers le dossier Error tout
+            // de suite (il ne rebouclera pas à l'infini), et les fichiers sains
+            // du même passage sont traités normalement.
             var ready = new List<string>();
             foreach (var file in files)
             {
                 if (token.IsCancellationRequested) return;
                 _pauseGate.Wait(token);
-                if (!IsFileReady(file)) { notReady++; continue; }
-                ready.Add(file);
+                if (!IsFileReady(file)) { notReady++; continue; } // encore en écriture
+
+                // validation individuelle : le fichier est-il lisible et bien formé ?
+                try
+                {
+                    var content = File.ReadAllText(file);
+                    var probe = new System.Xml.XmlDocument();
+                    probe.LoadXml(content); // lève si XML malformé
+                    ready.Add(file);
+                }
+                catch (Exception ex)
+                {
+                    // fichier corrompu : on l'isole vers Error et on l'exclut du lot
+                    readErrors++;
+                    Log.Error(ex, "{0}: [run {1}] fichier illisible/malformé, déplacé vers Error : {2}",
+                        Name, runId, file);
+                    MoveToError(file);
+                }
             }
 
             // découpe en lots (BatchSize du canal ; 0 = un seul lot)
@@ -170,8 +197,12 @@ namespace ConversionService
                 }
                 catch (Exception ex)
                 {
+                    // Les fichiers ont été pré-validés (XML bien formé), donc une
+                    // erreur ici vient de la GÉNÉRATION/mapping ou de la mise en
+                    // attente, pas d'un fichier corrompu. On conserve les sources
+                    // (pas d'archivage) : à corriger côté config, retenté au prochain passage.
                     hadFailure = true;
-                    Log.Error(ex, "{0}: [run {1}] lot {2}/{3} : génération/mise en attente impossible, {4} source(s) conservée(s).",
+                    Log.Error(ex, "{0}: [run {1}] lot {2}/{3} : génération/mise en attente impossible, {4} source(s) conservée(s) (vérifier le mapping).",
                         Name, runId, batchNo, totalBatches, batch.Count);
                 }
             }
@@ -183,6 +214,21 @@ namespace ConversionService
             Log.Info("{0}: {1}", Name, summary);
 
             int problems = (hadFailure ? 1 : 0) + readErrors + pendedOutputs;
+
+            // historique pour le dashboard (best-effort)
+            _stats.Append(new RunStats
+            {
+                Timestamp = DateTime.Now,
+                Pipeline = Name,
+                FilesProcessed = delivered,
+                OutputsDelivered = outputsWritten,
+                OutputsPending = pendedOutputs,
+                NotReady = notReady,
+                ReadErrors = readErrors,
+                HadFailure = hadFailure,
+                DurationMs = sw.ElapsedMilliseconds
+            });
+
             if (problems > 0)
                 EventLogWriter.Warn("Passage terminé avec des anomalies. " + summary, EventLogWriter.EvtRunErrors);
             else

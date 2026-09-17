@@ -147,13 +147,21 @@ namespace ACPollerForAPS.Core
 
                     // une ligne de sortie par ligne comptable de l'entrée
                     var lines = record.Select(ch.LinesPath);
+                    int lineIndex = 0;
                     while (lines.MoveNext())
                     {
+                        lineIndex++;
                         var lineEl = CreateEl(outDoc, xf.LineElement, ns);
                         linesParent.AppendChild(lineEl);
                         foreach (var col in lineFields)
                         {
-                            string raw = Resolve(record, lines.Current, col, warnings, ch.Name);
+                            string raw;
+                            // Path spécial "#index" : numéro de ligne (1,2,3...) —
+                            // utile pour un champ type LP/numéro de position.
+                            if (string.Equals(col.Path, "#index", StringComparison.OrdinalIgnoreCase))
+                                raw = lineIndex.ToString(CultureInfo.InvariantCulture);
+                            else
+                                raw = Resolve(record, lines.Current, col, warnings, ch.Name);
                             string val = FormatValue(raw, col, xf.DecimalSeparator, xf.DateFormat);
                             var leaf = EnsurePath(outDoc, lineEl, col.Name, ns);
                             if (leaf != null) leaf.InnerText = val;
@@ -162,11 +170,33 @@ namespace ACPollerForAPS.Core
                 }
             }
 
-            var settings = new XmlWriterSettings { Indent = true, Encoding = new UTF8Encoding(false) };
-            var swb = new StringBuilder();
-            using (var w = XmlWriter.Create(swb, settings))
-                outDoc.Save(w);
-            return swb.ToString();
+            // Sérialisation avec l'encodage CONFIGURÉ (xf.Encoding, défaut UTF-8).
+            // Écrire vers un StringBuilder forcerait UTF-16 (un StringBuilder .NET
+            // est de l'UTF-16 en mémoire, l'encodage des settings serait ignoré).
+            // On passe donc par un MemoryStream avec le bon Encoding, pour obtenir
+            // une déclaration <?xml ... encoding="utf-8"?> conforme.
+            var enc = ResolveEncoding(xf.Encoding);
+            var settings = new XmlWriterSettings { Indent = true, Encoding = enc };
+            using (var ms = new System.IO.MemoryStream())
+            {
+                using (var w = XmlWriter.Create(ms, settings))
+                    outDoc.Save(w);
+                return enc.GetString(ms.ToArray());
+            }
+        }
+
+        // Résout un nom d'encodage ("UTF-8", "UTF-16", "windows-1250"...) en
+        // Encoding ; défaut = UTF-8 sans BOM. Un nom inconnu retombe sur UTF-8.
+        private static Encoding ResolveEncoding(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return new UTF8Encoding(false);
+            try
+            {
+                var n = name.Trim().ToLowerInvariant();
+                if (n == "utf-8" || n == "utf8") return new UTF8Encoding(false);
+                return Encoding.GetEncoding(name);
+            }
+            catch { return new UTF8Encoding(false); }
         }
 
         // Crée un élément, dans le namespace ns s'il est non vide.

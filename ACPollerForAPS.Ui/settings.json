@@ -1,188 +1,17 @@
 {
   "Pipelines": [
     {
-      "Name": "APS vers Optima",
-      "InputFolder": "C:\\ACPoller\\APS_In",
-      "ArchiveFolder": "C:\\ACPoller\\APS_In\\Archive",
-      "ErrorFolder": "C:\\ACPoller\\APS_In\\Error",
-      "ArchiveEnabled": true,
-      "FileFilter": "*.xml",
-      "StableCheckMs": 1000,
-      "RecordPath": "/InvoiceData",
-      "Schedule": {
-        "IntervalValue": 5,
-        "IntervalUnit": "Minutes"
-      },
-      "Output": {
-        "Name": "Optima (Comarch)",
-        "Enabled": true,
-        "Buyers": [],
-        "OutputFormat": "Xml",
-        "Provider": "mapping",
-        "OutputFolder": "C:\\ACPoller\\Out\\Optima",
-        "OutputFileName": "FA_{date}_{time}.xml",
-        "RecordPath": "/InvoiceData",
-        "LinesPath": "AccountingLines/AccountingLine",
-        "WriteRecordEvenIfNoLines": false,
-        "BatchSize": 0,
-        "SampleXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<InvoiceData>\n  <Header>\n    <InvoiceNumber>INV-2026-89412</InvoiceNumber>\n    <InvoiceDate>2026-08-15</InvoiceDate>\n    <DueDate>2026-09-14</DueDate>\n    <Currency>PLN</Currency>\n    <GrossAmount>1230.00</GrossAmount><NetAmount>1000.00</NetAmount><TaxAmount>230.00</TaxAmount>\n    <Buyer><BuyerId>BUYER-PL-001</BuyerId><CompanyCode>2000</CompanyCode></Buyer>\n    <Supplier><SupplierCode>VEND-55201</SupplierCode><SupplierName>Nowak Biuro Sp. z o.o.</SupplierName><TaxRegistrationNumber>PL1234567890</TaxRegistrationNumber></Supplier>\n  </Header>\n  <AccountingLines>\n    <AccountingLine lineNumber=\"1\"><PostingType>Debit</PostingType><GLAccount>401-01</GLAccount><GLAccountDescription>Uslugi biurowe</GLAccountDescription><Amount>1000.00</Amount><TaxAmount>230.00</TaxAmount><TaxCode>23</TaxCode><Dimensions><Dimension1>CORP</Dimension1></Dimensions></AccountingLine>\n  </AccountingLines>\n</InvoiceData>\n",
-        "CsvFormat": {
-          "Delimiter": ",",
-          "Quote": "\"",
-          "QuoteAllFields": false,
-          "DecimalSeparator": ".",
-          "DateFormat": "yyyy-MM-dd",
-          "WriteHeader": true,
-          "Encoding": "UTF-8"
-        },
-        "XmlFormat": {
-          "RootElement": "ROOT",
-          "RecordElement": "FAKTURA_ZAKUPU",
-          "LineElement": "POZYCJA",
-          "DecimalSeparator": ".",
-          "DateFormat": "yyyy-MM-dd",
-          "Encoding": "UTF-8"
-        },
-        "Transport": {
-          "Type": "Fs",
-          "RetryCount": 3,
-          "RetryDelayMs": 5000,
-          "Host": "",
-          "Port": 21,
-          "RemoteFolder": "/",
-          "Username": "",
-          "PasswordEncrypted": "",
-          "FtpsMode": "Explicit",
-          "ValidateCertificate": true,
-          "S3Bucket": "",
-          "S3KeyPrefix": "",
-          "S3Region": "eu-west-1",
-          "S3ServiceUrl": "",
-          "S3ForcePathStyle": false,
-          "S3AccessKey": "",
-          "S3SecretKeyEncrypted": ""
-        },
-        "Fields": [
-          {
-            "Name": "Numer",
-            "Type": "text",
-            "Source": "header",
-            "Path": "Header/InvoiceNumber"
-          },
-          {
-            "Name": "DataWystawienia",
-            "Type": "date",
-            "Source": "header",
-            "Path": "Header/InvoiceDate",
-            "InFormat": "yyyy-MM-dd"
-          },
-          {
-            "Name": "TerminPlatnosci",
-            "Type": "date",
-            "Source": "header",
-            "Path": "Header/DueDate",
-            "InFormat": "yyyy-MM-dd"
-          },
-          {
-            "Name": "Waluta",
-            "Type": "text",
-            "Source": "header",
-            "Path": "Header/Currency"
-          },
-          {
-            "Name": "KontrahentKod",
-            "Type": "text",
-            "Source": "header",
-            "Path": "Header/Supplier/SupplierCode"
-          },
-          {
-            "Name": "KontrahentNazwa",
-            "Type": "text",
-            "Source": "header",
-            "Path": "Header/Supplier/SupplierName"
-          },
-          {
-            "Name": "KontrahentNIP",
-            "Type": "text",
-            "Source": "header",
-            "Path": "Header/Supplier/TaxRegistrationNumber"
-          },
-          {
-            "Name": "NettoRazem",
-            "Type": "amount",
-            "Source": "header",
-            "Path": "Header/NetAmount",
-            "DecDigits": 2
-          },
-          {
-            "Name": "VATRazem",
-            "Type": "amount",
-            "Source": "header",
-            "Path": "Header/TaxAmount",
-            "DecDigits": 2
-          },
-          {
-            "Name": "BruttoRazem",
-            "Type": "amount",
-            "Source": "header",
-            "Path": "Header/GrossAmount",
-            "DecDigits": 2
-          },
-          {
-            "Name": "Konto",
-            "Type": "text",
-            "Source": "line",
-            "Path": "GLAccount"
-          },
-          {
-            "Name": "Opis",
-            "Type": "text",
-            "Source": "line",
-            "Path": "GLAccountDescription"
-          },
-          {
-            "Name": "Netto",
-            "Type": "amount",
-            "Source": "line",
-            "Path": "Amount",
-            "DecDigits": 2,
-            "AbsoluteValue": true
-          },
-          {
-            "Name": "VAT",
-            "Type": "amount",
-            "Source": "line",
-            "Path": "TaxAmount",
-            "DecDigits": 2,
-            "AbsoluteValue": true
-          },
-          {
-            "Name": "StawkaVAT",
-            "Type": "text",
-            "Source": "line",
-            "Path": "TaxCode"
-          },
-          {
-            "Name": "Wymiar1",
-            "Type": "text",
-            "Source": "line",
-            "Path": "Dimensions/Dimension1"
-          }
-        ]
-      }
-    },
-    {
-      "Name": "Optima vers APS",
-      "InputFolder": "C:\\ACPoller\\Optima_In",
-      "ArchiveFolder": "C:\\ACPoller\\Optima_In\\Archive",
-      "ErrorFolder": "C:\\ACPoller\\Optima_In\\Error",
+      "Name": "Optima → APS (lecture Comarch)",
+      "InputFolder": "C:\\OptimaIntegration\\Export",
+      "ArchiveFolder": "C:\\OptimaIntegration\\Processed",
+      "ErrorFolder": "C:\\OptimaIntegration\\Errors",
       "ArchiveEnabled": true,
       "FileFilter": "*.xml",
       "StableCheckMs": 1000,
       "RecordPath": "/ROOT/DOKUMENT",
       "Schedule": {
-        "IntervalValue": 5,
-        "IntervalUnit": "Minutes"
+        "IntervalValue": 1,
+        "IntervalUnit": "Hours"
       },
       "Output": {
         "Name": "APS",
@@ -190,7 +19,7 @@
         "Buyers": [],
         "OutputFormat": "Xml",
         "Provider": "mapping",
-        "OutputFolder": "C:\\ACPoller\\Out\\APS",
+        "OutputFolder": "C:\\ACPoller\\APS_In",
         "OutputFileName": "APS_{date}_{time}.xml",
         "RecordPath": "/ROOT/DOKUMENT",
         "LinesPath": "POZYCJE/POZYCJA",
@@ -209,7 +38,9 @@
         "XmlFormat": {
           "RootElement": "InvoiceData",
           "RecordElement": "Invoice",
+          "LineWrapper": "AccountingLines",
           "LineElement": "AccountingLine",
+          "Namespace": "",
           "DecimalSeparator": ".",
           "DateFormat": "yyyy-MM-dd",
           "Encoding": "UTF-8"
@@ -235,59 +66,65 @@
         },
         "Fields": [
           {
-            "Name": "InvoiceNumber",
+            "Name": "Header/InvoiceNumber",
             "Type": "text",
             "Source": "header",
             "Path": "NAGLOWEK/NUMER_PELNY"
           },
           {
-            "Name": "InvoiceDate",
+            "Name": "Header/InvoiceDate",
             "Type": "date",
             "Source": "header",
             "Path": "NAGLOWEK/DATA_WYSTAWIENIA",
             "InFormat": "yyyy-MM-dd"
           },
           {
-            "Name": "DueDate",
+            "Name": "Header/DueDate",
             "Type": "date",
             "Source": "header",
             "Path": "NAGLOWEK/PLATNOSC/TERMIN",
             "InFormat": "yyyy-MM-dd"
           },
           {
-            "Name": "Currency",
+            "Name": "Header/Currency",
             "Type": "text",
             "Source": "header",
             "Path": "NAGLOWEK/WALUTA/SYMBOL"
           },
           {
-            "Name": "SupplierCode",
+            "Name": "Header/Supplier/Code",
             "Type": "text",
             "Source": "header",
             "Path": "NAGLOWEK/SPRZEDAWCA/NIP"
           },
           {
-            "Name": "SupplierName",
+            "Name": "Header/Supplier/Name",
             "Type": "text",
             "Source": "header",
             "Path": "NAGLOWEK/SPRZEDAWCA/NAZWA"
           },
           {
-            "Name": "NetAmount",
+            "Name": "Header/Supplier/City",
+            "Type": "text",
+            "Source": "header",
+            "Path": "NAGLOWEK/SPRZEDAWCA/ADRES/MIASTO"
+          },
+          {
+            "Name": "Header/Totals/Net",
             "Type": "amount",
             "Source": "header",
             "Path": "NAGLOWEK/KWOTY/RAZEM_NETTO",
             "DecDigits": 2
           },
           {
-            "Name": "TaxAmount",
+            "Name": "Header/Totals/Vat",
             "Type": "amount",
             "Source": "header",
             "Path": "NAGLOWEK/KWOTY/RAZEM_VAT",
             "DecDigits": 2
           },
           {
-            "Name": "GrossAmount",
+            "Name": "Header/Totals/Gross",
             "Type": "amount",
             "Source": "header",
             "Path": "NAGLOWEK/KWOTY/RAZEM_BRUTTO",
@@ -300,13 +137,13 @@
             "Path": "TOWAR/KOD"
           },
           {
-            "Name": "GLAccountDescription",
+            "Name": "Description",
             "Type": "text",
             "Source": "line",
             "Path": "TOWAR/NAZWA"
           },
           {
-            "Name": "Amount",
+            "Name": "NetAmount",
             "Type": "amount",
             "Source": "line",
             "Path": "WARTOSC_NETTO",
@@ -329,6 +166,200 @@
             "Type": "text",
             "Source": "line",
             "Path": "JM"
+          }
+        ]
+      }
+    },
+    {
+      "Name": "APS → Optima (génération Comarch)",
+      "InputFolder": "C:\\ACPoller\\APS_Out",
+      "ArchiveFolder": "C:\\ACPoller\\APS_Out\\Archive",
+      "ErrorFolder": "C:\\ACPoller\\APS_Out\\Errors",
+      "ArchiveEnabled": true,
+      "FileFilter": "*.xml",
+      "StableCheckMs": 1000,
+      "RecordPath": "/InvoiceData",
+      "Schedule": {
+        "IntervalValue": 1,
+        "IntervalUnit": "Hours"
+      },
+      "Output": {
+        "Name": "Optima (Comarch)",
+        "Enabled": true,
+        "Buyers": [],
+        "OutputFormat": "Xml",
+        "Provider": "mapping",
+        "OutputFolder": "C:\\OptimaIntegration\\Import",
+        "OutputFileName": "FA_{date}_{time}.xml",
+        "RecordPath": "/InvoiceData",
+        "LinesPath": "AccountingLines/AccountingLine",
+        "WriteRecordEvenIfNoLines": false,
+        "BatchSize": 0,
+        "SampleXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<InvoiceData>\n  <Header>\n    <InvoiceNumber>PINV-2026-0042</InvoiceNumber>\n    <InvoiceDate>2026-09-17</InvoiceDate>\n    <DueDate>2026-10-17</DueDate>\n    <Currency>PLN</Currency>\n    <Supplier>\n      <SupplierCode>VEND-55201</SupplierCode>\n      <SupplierName>Nowak Biuro Sp. z o.o.</SupplierName>\n      <TaxRegistrationNumber>PL1234567890</TaxRegistrationNumber>\n    </Supplier>\n  </Header>\n  <AccountingLines>\n    <AccountingLine><PostingType>Debit</PostingType><GLAccount>401-01</GLAccount><GLAccountDescription>Uslugi biurowe</GLAccountDescription><NetAmount>680.00</NetAmount><TaxAmount>156.40</TaxAmount><TaxRate>23</TaxRate><Quantity>2</Quantity><Unit>szt</Unit></AccountingLine>\n    <AccountingLine><PostingType>Debit</PostingType><GLAccount>402-00</GLAccount><GLAccountDescription>Materialy</GLAccountDescription><NetAmount>500.00</NetAmount><TaxAmount>115.00</TaxAmount><TaxRate>23</TaxRate><Quantity>5</Quantity><Unit>szt</Unit></AccountingLine>\n  </AccountingLines>\n</InvoiceData>\n",
+        "CsvFormat": {
+          "Delimiter": ",",
+          "Quote": "\"",
+          "QuoteAllFields": false,
+          "DecimalSeparator": ".",
+          "DateFormat": "yyyy-MM-dd",
+          "WriteHeader": true,
+          "Encoding": "UTF-8"
+        },
+        "XmlFormat": {
+          "RootElement": "ROOT",
+          "RecordElement": "DOKUMENT",
+          "LineWrapper": "POZYCJE",
+          "LineElement": "POZYCJA",
+          "Namespace": "http://www.cdn.com.pl/optima/dokument",
+          "DecimalSeparator": ".",
+          "DateFormat": "yyyy-MM-dd",
+          "Encoding": "UTF-8"
+        },
+        "Transport": {
+          "Type": "Fs",
+          "RetryCount": 3,
+          "RetryDelayMs": 5000,
+          "Host": "",
+          "Port": 21,
+          "RemoteFolder": "/",
+          "Username": "",
+          "PasswordEncrypted": "",
+          "FtpsMode": "Explicit",
+          "ValidateCertificate": true,
+          "S3Bucket": "",
+          "S3KeyPrefix": "",
+          "S3Region": "eu-west-1",
+          "S3ServiceUrl": "",
+          "S3ForcePathStyle": false,
+          "S3AccessKey": "",
+          "S3SecretKeyEncrypted": ""
+        },
+        "Fields": [
+          {
+            "Name": "NAGLOWEK/GENERATOR",
+            "Type": "text",
+            "Source": "fixed",
+            "Value": "AC Poller"
+          },
+          {
+            "Name": "NAGLOWEK/TYP_DOKUMENTU",
+            "Type": "text",
+            "Source": "fixed",
+            "Value": "301"
+          },
+          {
+            "Name": "NAGLOWEK/RODZAJ_DOKUMENTU",
+            "Type": "text",
+            "Source": "fixed",
+            "Value": "301000"
+          },
+          {
+            "Name": "NAGLOWEK/NUMER_PELNY",
+            "Type": "text",
+            "Source": "header",
+            "Path": "Header/InvoiceNumber"
+          },
+          {
+            "Name": "NAGLOWEK/DATA_WYSTAWIENIA",
+            "Type": "date",
+            "Source": "header",
+            "Path": "Header/InvoiceDate",
+            "InFormat": "yyyy-MM-dd"
+          },
+          {
+            "Name": "NAGLOWEK/DATA_OPERACJI",
+            "Type": "date",
+            "Source": "header",
+            "Path": "Header/InvoiceDate",
+            "InFormat": "yyyy-MM-dd"
+          },
+          {
+            "Name": "NAGLOWEK/PLATNOSC/TERMIN",
+            "Type": "date",
+            "Source": "header",
+            "Path": "Header/DueDate",
+            "InFormat": "yyyy-MM-dd"
+          },
+          {
+            "Name": "NAGLOWEK/WALUTA/SYMBOL",
+            "Type": "text",
+            "Source": "header",
+            "Path": "Header/Currency"
+          },
+          {
+            "Name": "NAGLOWEK/SPRZEDAWCA/NIP",
+            "Type": "text",
+            "Source": "header",
+            "Path": "Header/Supplier/TaxRegistrationNumber"
+          },
+          {
+            "Name": "NAGLOWEK/SPRZEDAWCA/NAZWA",
+            "Type": "text",
+            "Source": "header",
+            "Path": "Header/Supplier/SupplierName"
+          },
+          {
+            "Name": "NAGLOWEK/SPRZEDAWCA/ADRES/KRAJ",
+            "Type": "text",
+            "Source": "fixed",
+            "Value": "Polska"
+          },
+          {
+            "Name": "NAGLOWEK/KWOTY/RAZEM_NETTO",
+            "Type": "amount",
+            "Source": "sum",
+            "Path": "NetAmount",
+            "DecDigits": 2
+          },
+          {
+            "Name": "NAGLOWEK/KWOTY/RAZEM_VAT",
+            "Type": "amount",
+            "Source": "sum",
+            "Path": "TaxAmount",
+            "DecDigits": 2
+          },
+          {
+            "Name": "LP",
+            "Type": "text",
+            "Source": "line",
+            "Path": "#index"
+          },
+          {
+            "Name": "TOWAR/KOD",
+            "Type": "text",
+            "Source": "line",
+            "Path": "GLAccount"
+          },
+          {
+            "Name": "TOWAR/NAZWA",
+            "Type": "text",
+            "Source": "line",
+            "Path": "GLAccountDescription"
+          },
+          {
+            "Name": "STAWKA_VAT/STAWKA",
+            "Type": "text",
+            "Source": "line",
+            "Path": "TaxRate"
+          },
+          {
+            "Name": "WARTOSC_NETTO",
+            "Type": "amount",
+            "Source": "line",
+            "Path": "NetAmount",
+            "DecDigits": 2
+          },
+          {
+            "Name": "ILOSC",
+            "Type": "text",
+            "Source": "line",
+            "Path": "Quantity"
+          },
+          {
+            "Name": "JM",
+            "Type": "text",
+            "Source": "line",
+            "Path": "Unit"
           }
         ]
       }

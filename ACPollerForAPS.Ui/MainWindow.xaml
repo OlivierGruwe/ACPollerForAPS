@@ -765,6 +765,127 @@
                 </Grid>
             </TabItem>
 
+            <!-- ===================== DASHBOARD ===================== -->
+            <TabItem Header="Dashboard" Style="{StaticResource BrandTab}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" DataContext="{Binding Dashboard}">
+                    <StackPanel Margin="16">
+
+                        <!-- barre d'outils : période + refresh -->
+                        <DockPanel Margin="0,0,0,12">
+                            <TextBlock DockPanel.Dock="Left" Text="Operations overview" FontSize="18"
+                                       FontWeight="SemiBold" Foreground="{StaticResource ArondorGrey}"
+                                       VerticalAlignment="Center" />
+                            <Button DockPanel.Dock="Right" Content="Refresh" Width="90"
+                                    Command="{Binding RefreshCommand}" />
+                            <ComboBox DockPanel.Dock="Right" Width="90" Margin="0,0,8,0"
+                                      ItemsSource="{Binding RangeOptions}" SelectedItem="{Binding RangeDays}"
+                                      ToolTip="Number of days to include." />
+                            <TextBlock Text="{Binding LastRunText}" Foreground="Gray" FontSize="11"
+                                       VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,12,0" />
+                        </DockPanel>
+
+                        <!-- message si aucune donnée -->
+                        <TextBlock Text="{Binding EmptyHint}" Foreground="Gray" TextWrapping="Wrap"
+                                   Margin="0,8,0,8">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasData}" Value="False">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+
+                        <!-- cartes de synthèse -->
+                        <UniformGrid Columns="5" Margin="0,0,0,16">
+                            <Border Background="{DynamicResource MahApps.Brushes.Control.Background}" BorderBrush="{DynamicResource MahApps.Brushes.Control.Border}" BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,0,6,0">
+                                <StackPanel>
+                                    <TextBlock Text="Runs" Foreground="Gray" FontSize="11" />
+                                    <TextBlock Text="{Binding TotalRuns}" FontSize="22" FontWeight="SemiBold" />
+                                </StackPanel>
+                            </Border>
+                            <Border Background="{DynamicResource MahApps.Brushes.Control.Background}" BorderBrush="{DynamicResource MahApps.Brushes.Control.Border}" BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,0,6,0">
+                                <StackPanel>
+                                    <TextBlock Text="Files processed" Foreground="Gray" FontSize="11" />
+                                    <TextBlock Text="{Binding TotalFiles}" FontSize="22" FontWeight="SemiBold" />
+                                </StackPanel>
+                            </Border>
+                            <Border Background="{DynamicResource MahApps.Brushes.Control.Background}" BorderBrush="{DynamicResource MahApps.Brushes.Control.Border}" BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,0,6,0">
+                                <StackPanel>
+                                    <TextBlock Text="Outputs delivered" Foreground="Gray" FontSize="11" />
+                                    <TextBlock Text="{Binding TotalDelivered}" FontSize="22" FontWeight="SemiBold" />
+                                </StackPanel>
+                            </Border>
+                            <Border Background="{DynamicResource MahApps.Brushes.Control.Background}" BorderBrush="{DynamicResource MahApps.Brushes.Control.Border}" BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,0,6,0">
+                                <StackPanel>
+                                    <TextBlock Text="Pending" Foreground="Gray" FontSize="11" />
+                                    <TextBlock Text="{Binding TotalPending}" FontSize="22" FontWeight="SemiBold" />
+                                </StackPanel>
+                            </Border>
+                            <Border Background="{DynamicResource MahApps.Brushes.Control.Background}" BorderBrush="{DynamicResource MahApps.Brushes.Control.Border}" BorderThickness="1" CornerRadius="4" Padding="10">
+                                <StackPanel>
+                                    <TextBlock Text="Error rate" Foreground="Gray" FontSize="11" />
+                                    <TextBlock Text="{Binding ErrorRatePct}" FontSize="22" FontWeight="SemiBold"
+                                               Foreground="{StaticResource ArondorCyan}" />
+                                </StackPanel>
+                            </Border>
+                        </UniformGrid>
+
+                        <!-- graphe : volumétrie par jour -->
+                        <GroupBox Header="Files processed per day" Style="{StaticResource Section}">
+                            <ItemsControl ItemsSource="{Binding ByDayBars}" Height="180">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="3,0" VerticalAlignment="Bottom"
+                                                    ToolTip="{Binding Label}">
+                                            <TextBlock Text="{Binding Value}" FontSize="10" HorizontalAlignment="Center" />
+                                            <Rectangle Width="18" Height="{Binding HeightPct}"
+                                                       VerticalAlignment="Bottom">
+                                                <Rectangle.Style>
+                                                    <Style TargetType="Rectangle">
+                                                        <Setter Property="Fill" Value="{StaticResource ArondorCyan}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding HasProblems}" Value="True">
+                                                                <Setter Property="Fill" Value="#E0A030" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Rectangle.Style>
+                                            </Rectangle>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </GroupBox>
+
+                        <!-- table par pipeline -->
+                        <GroupBox Header="By pipeline" Style="{StaticResource Section}">
+                            <DataGrid ItemsSource="{Binding ByPipelineRows}" AutoGenerateColumns="False"
+                                      IsReadOnly="True" HeadersVisibility="Column" CanUserAddRows="False">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Pipeline" Binding="{Binding Label}" Width="*" />
+                                    <DataGridTextColumn Header="Runs" Binding="{Binding Runs}" Width="70" />
+                                    <DataGridTextColumn Header="Files" Binding="{Binding FilesProcessed}" Width="80" />
+                                    <DataGridTextColumn Header="Delivered" Binding="{Binding OutputsDelivered}" Width="90" />
+                                    <DataGridTextColumn Header="Pending" Binding="{Binding OutputsPending}" Width="80" />
+                                    <DataGridTextColumn Header="Failures" Binding="{Binding Failures}" Width="80" />
+                                    <DataGridTextColumn Header="Avg ms" Binding="{Binding AvgDurationMs}" Width="80" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </GroupBox>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
         </TabControl>
     </DockPanel>
 </mah:MetroWindow>

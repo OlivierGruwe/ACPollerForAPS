@@ -17,7 +17,7 @@
 
   <ItemGroup>
     <PackageReference Include="MahApps.Metro" Version="2.4.10" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <!-- FluentFTP : uniquement pour le bouton "Test connection" FTPS -->
     <PackageReference Include="FluentFTP" Version="52.0.0" />
     <PackageReference Include="AWSSDK.S3" Version="3.7.400" />
