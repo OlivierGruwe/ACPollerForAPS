@@ -101,6 +101,21 @@ Section "-Core files" SEC_CORE
   SetOutPath "$INSTDIR"
 
   ; ---------------------------------------------------------------------------
+  ; STOP THE SERVICE FIRST — before copying anything. If the service is running,
+  ; its exe (and DLLs) are locked and the File copy below would fail. We stop it
+  ; here, at the very start, whatever section combination the user picked.
+  ; If it isn't installed, these commands are harmless no-ops.
+  ; ---------------------------------------------------------------------------
+  DetailPrint "Stopping the service (if running)..."
+  nsExec::ExecToLog 'sc stop ${SERVICE_NAME}'
+  Pop $0
+  ; also close the configuration UI if it is open (its exe would be locked too)
+  nsExec::ExecToLog 'taskkill /IM "${UI_EXE}" /F'
+  Pop $0
+  ; give Windows a moment to release the exe/DLL handles
+  Sleep 3000
+
+  ; ---------------------------------------------------------------------------
   ; All binaries (service exe, UI exe, Core.dll and every dependency) live
   ; together in the shared build output:  D:\devs\ACPollerForAPS\bin
   ; The .nsi is in  D:\devs\ACPollerForAPS\installer , so bin is  ..\bin .
@@ -146,6 +161,11 @@ Section "Service (Windows background service)" SEC_SVC
 
   ; providers/ folder for ERP plugins (ship empty; DLLs are dropped here later)
   CreateDirectory "$INSTDIR\providers"
+
+  ; Deploy a default settings.json ONLY if none exists yet, so the service can
+  ; start on a fresh machine (and an existing config is never overwritten).
+  IfFileExists "$INSTDIR\settings.json" +2 0
+    File "/oname=$INSTDIR\settings.json" "assets\settings.default.json"
 
   ; --- Pre-flight: verify the service exe and core dependency are present ----
   IfFileExists "$INSTDIR\${SVC_EXE}" +2 0
@@ -229,10 +249,14 @@ Section "Uninstall"
   DetailPrint "Stopping the service..."
   nsExec::ExecToLog 'sc stop ${SERVICE_NAME}'
   Pop $0
-  Sleep 1500
+  ; close the configuration UI if open (its exe/DLLs would be locked)
+  nsExec::ExecToLog 'taskkill /IM "${UI_EXE}" /F'
+  Pop $0
+  Sleep 3000
   DetailPrint "Uninstalling the service..."
   nsExec::ExecToLog '"${INSTALLUTIL}" /u "$INSTDIR\${SVC_EXE}"'
   Pop $0
+  Sleep 1500
 
   ; Remove installed files. We ship whole Release folders, so delete the known
   ; artifacts and DLLs, but PRESERVE logs\, providers\ and settings.json.

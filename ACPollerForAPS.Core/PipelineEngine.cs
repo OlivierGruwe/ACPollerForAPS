@@ -4,44 +4,38 @@ using System.Globalization;
 using System.Text;
 using System.Xml;
 using System.Xml.XPath;
+using System.Text.RegularExpressions;
 
 namespace ACPollerForAPS.Core
 {
     /// <summary>
-    /// Moteur du pipeline : routage par Buyer + génération de la sortie
-    /// (CSV ou XML) selon le canal. Sans état. Identique en logique à celui
-    /// de l'UI PipelineConfig, pour qu'aperçu et production coïncident.
+    /// Moteur du pipeline : génération de la sortie (CSV ou XML) selon le canal.
+    /// Sans état. Le routage par Buyer a été retiré (un pipeline = une sortie).
     /// </summary>
     public static class PipelineEngine
     {
-        /// <summary>Lit la valeur de Buyer d'un XML (pour le routage).</summary>
-        public static string ReadBuyer(string xmlContent, PipelineSettings s, out string error)
-        {
-            error = null;
-            try
-            {
-                var doc = new XmlDocument();
-                doc.LoadXml(xmlContent);
-                var nav = doc.CreateNavigator();
-                var record = nav.SelectSingleNode(s.RecordPath);
-                if (record == null) { error = "RecordPath introuvable : " + s.RecordPath; return null; }
-                var b = record.SelectSingleNode(s.BuyerPath);
-                return b?.Value?.Trim() ?? "";
-            }
-            catch (Exception ex) { error = ex.Message; return null; }
-        }
+        // Regex de neutralisation des namespaces (déclarations xmlns + préfixes).
+        private static readonly Regex RxXmlns = new Regex("\\s+xmlns(:\\w+)?=\"[^\"]*\"", RegexOptions.Compiled);
+        private static readonly Regex RxPrefix = new Regex("(</?)\\w+:", RegexOptions.Compiled);
 
-        public static OutputChannel SelectChannel(PipelineSettings s, string buyer)
+        /// <summary>
+        /// Charge un XML en NEUTRALISANT les namespaces. De nombreux formats ERP
+        /// (ex. Comarch Optima : xmlns="http://www.cdn.com.pl/optima/dokument")
+        /// déclarent un namespace par défaut qui empêcherait les XPath simples
+        /// (NAGLOWEK/NUMER_PELNY...) de matcher. On retire donc les déclarations
+        /// xmlns et les préfixes avant chargement, pour que les chemins de la
+        /// config restent simples et lisibles.
+        /// </summary>
+        private static XmlDocument LoadXmlNoNamespace(string xml)
         {
-            if (s.Channels == null) return null;
-            foreach (var ch in s.Channels)
+            if (!string.IsNullOrEmpty(xml))
             {
-                if (!ch.Enabled || ch.Buyers == null) continue;
-                foreach (var b in ch.Buyers)
-                    if (string.Equals(b, buyer, StringComparison.OrdinalIgnoreCase))
-                        return ch;
+                xml = RxXmlns.Replace(xml, string.Empty);
+                xml = RxPrefix.Replace(xml, "$1");
             }
-            return null;
+            var doc = new XmlDocument();
+            doc.LoadXml(xml);
+            return doc;
         }
 
         // ---- CSV : concatène les lignes de plusieurs fichiers dans un buffer ----
@@ -50,8 +44,7 @@ namespace ACPollerForAPS.Core
         public static void AppendCsvRows(StringBuilder sb, string xmlContent,
             OutputChannel ch, List<string> warnings)
         {
-            var doc = new XmlDocument();
-            doc.LoadXml(xmlContent);
+            var doc = LoadXmlNoNamespace(xmlContent);
             var nav = doc.CreateNavigator();
             var f = ch.CsvFormat ?? new PipelineCsvFormat();
 
@@ -98,33 +91,72 @@ namespace ACPollerForAPS.Core
             OutputChannel ch, List<string> warnings)
         {
             var xf = ch.XmlFormat ?? new PipelineXmlFormat();
+            var ns = xf.Namespace ?? "";
             var outDoc = new XmlDocument();
-            var root = outDoc.CreateElement(xf.RootElement);
+
+            // élément racine, avec namespace par défaut si défini
+            var root = CreateEl(outDoc, xf.RootElement, ns);
             outDoc.AppendChild(root);
+
+            // séparation header (record) / line
+            var headerFields = new List<PipelineField>();
+            var lineFields = new List<PipelineField>();
+            foreach (var col in ch.Fields ?? new List<PipelineField>())
+            {
+                if (string.Equals(col.Source, "line", StringComparison.OrdinalIgnoreCase))
+                    lineFields.Add(col);
+                else
+                    headerFields.Add(col);
+            }
 
             foreach (var xml in xmlContents)
             {
-                var doc = new XmlDocument();
-                doc.LoadXml(xml);
+                var doc = LoadXmlNoNamespace(xml);
                 var nav = doc.CreateNavigator();
                 var records = nav.Select(ch.RecordPath);
                 while (records.MoveNext())
                 {
                     var record = records.Current;
-                    var recEl = outDoc.CreateElement(xf.RecordElement);
+
+                    // conteneur du record (ex. DOKUMENT)
+                    var recEl = CreateEl(outDoc, xf.RecordElement, ns);
                     root.AppendChild(recEl);
+
+                    // champs header : écrits à leur chemin imbriqué SOUS le record
+                    foreach (var col in headerFields)
+                    {
+                        string raw;
+                        // source "sum" : somme d'un chemin de ligne sur toutes les
+                        // lignes du record (ex. RAZEM_NETTO = somme des WARTOSC_NETTO)
+                        if (string.Equals(col.Source, "sum", StringComparison.OrdinalIgnoreCase))
+                            raw = ResolveSum(record, ch, col);
+                        else
+                            raw = Resolve(record, null, col, warnings, ch.Name);
+                        string val = FormatValue(raw, col, xf.DecimalSeparator, xf.DateFormat);
+                        var leaf = EnsurePath(outDoc, recEl, col.Name, ns);
+                        if (leaf != null) leaf.InnerText = val;
+                    }
+
+                    // conteneur optionnel des lignes (ex. POZYCJE)
+                    XmlElement linesParent = recEl;
+                    if (!string.IsNullOrWhiteSpace(xf.LineWrapper))
+                    {
+                        linesParent = CreateEl(outDoc, xf.LineWrapper, ns);
+                        recEl.AppendChild(linesParent);
+                    }
+
+                    // une ligne de sortie par ligne comptable de l'entrée
                     var lines = record.Select(ch.LinesPath);
                     while (lines.MoveNext())
                     {
-                        var lineEl = outDoc.CreateElement(xf.LineElement);
-                        recEl.AppendChild(lineEl);
-                        foreach (var col in ch.Fields)
+                        var lineEl = CreateEl(outDoc, xf.LineElement, ns);
+                        linesParent.AppendChild(lineEl);
+                        foreach (var col in lineFields)
                         {
                             string raw = Resolve(record, lines.Current, col, warnings, ch.Name);
                             string val = FormatValue(raw, col, xf.DecimalSeparator, xf.DateFormat);
-                            var el = outDoc.CreateElement(SafeElementName(col.Name));
-                            el.InnerText = val;
-                            lineEl.AppendChild(el);
+                            var leaf = EnsurePath(outDoc, lineEl, col.Name, ns);
+                            if (leaf != null) leaf.InnerText = val;
                         }
                     }
                 }
@@ -135,6 +167,43 @@ namespace ACPollerForAPS.Core
             using (var w = XmlWriter.Create(swb, settings))
                 outDoc.Save(w);
             return swb.ToString();
+        }
+
+        // Crée un élément, dans le namespace ns s'il est non vide.
+        private static XmlElement CreateEl(XmlDocument doc, string name, string ns)
+        {
+            var n = SafeElementName(name);
+            return string.IsNullOrWhiteSpace(ns)
+                ? doc.CreateElement(n)
+                : doc.CreateElement(n, ns);
+        }
+
+        // Construit (ou réutilise) l'arborescence décrite par un chemin de sortie
+        // "A/B/C" sous 'parent', et retourne l'élément feuille (C) où poser la
+        // valeur. Les parents partagés entre plusieurs champs sont réutilisés.
+        private static XmlElement EnsurePath(XmlDocument doc, XmlElement parent, string path, string ns)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return null;
+            var parts = path.Split('/');
+            var current = parent;
+            foreach (var part in parts)
+            {
+                var name = SafeElementName(part.Trim());
+                if (string.IsNullOrEmpty(name)) continue;
+                // réutilise un enfant existant de même nom, sinon le crée
+                XmlElement child = null;
+                foreach (XmlNode c in current.ChildNodes)
+                {
+                    if (c is XmlElement e && e.LocalName == name) { child = e; break; }
+                }
+                if (child == null)
+                {
+                    child = CreateEl(doc, name, ns);
+                    current.AppendChild(child);
+                }
+                current = child;
+            }
+            return current;
         }
 
         private static string SafeElementName(string name)
@@ -193,6 +262,45 @@ namespace ACPollerForAPS.Core
                 warnings.Add(string.Format("[{0}] champ '{1}': {2}", channelName, col.Name, ex.Message));
             }
             return ApplyValues(value, col);
+        }
+
+        /// <summary>
+        /// Somme un chemin de ligne (col.Path, relatif à la ligne) sur TOUTES les
+        /// lignes du record courant. Respecte OnlyWhen (permet des totaux
+        /// conditionnels, ex. somme des seules lignes Debit). Retourne la somme
+        /// en invariant (le formatage décimal/absolu est fait ensuite par
+        /// FormatValue, comme pour un montant normal).
+        /// </summary>
+        private static string ResolveSum(XPathNavigator record, OutputChannel ch, PipelineField col)
+        {
+            double total = 0;
+            if (record == null || string.IsNullOrWhiteSpace(ch.LinesPath) || string.IsNullOrWhiteSpace(col.Path))
+                return "0";
+            var lines = record.Select(ch.LinesPath);
+            while (lines.MoveNext())
+            {
+                var line = lines.Current;
+
+                // OnlyWhen : n'additionne que les lignes qui satisfont la condition
+                if (!string.IsNullOrWhiteSpace(col.OnlyWhenPath))
+                {
+                    var cond = line.SelectSingleNode(col.OnlyWhenPath);
+                    var actual = cond?.Value ?? "";
+                    if (!string.Equals(actual.Trim(), (col.OnlyWhenEquals ?? "").Trim(),
+                            StringComparison.OrdinalIgnoreCase))
+                        continue;
+                }
+
+                var n = line.SelectSingleNode(col.Path);
+                var raw = n?.Value;
+                if (string.IsNullOrWhiteSpace(raw)) continue;
+                double v;
+                if (double.TryParse(raw.Replace(",", "."), NumberStyles.Any,
+                        CultureInfo.InvariantCulture, out v))
+                    total += v;
+            }
+            // valeur brute invariante ; FormatValue appliquera décimales/Abs/séparateur
+            return total.ToString(CultureInfo.InvariantCulture);
         }
 
         private static string ApplyValues(string raw, PipelineField col)

@@ -77,8 +77,8 @@ namespace ConversionService
             if (_s.ArchiveEnabled && !string.IsNullOrWhiteSpace(_s.ArchiveFolder))
                 Directory.CreateDirectory(_s.ArchiveFolder);
             if (!string.IsNullOrWhiteSpace(_s.ErrorFolder)) Directory.CreateDirectory(_s.ErrorFolder);
-            foreach (var ch in _s.Channels ?? new List<OutputChannel>())
-                if (!string.IsNullOrWhiteSpace(ch.OutputFolder)) Directory.CreateDirectory(ch.OutputFolder);
+            if (_s.Output != null && !string.IsNullOrWhiteSpace(_s.Output.OutputFolder))
+                Directory.CreateDirectory(_s.Output.OutputFolder);
         }
 
         private void Run(CancellationToken token)
@@ -132,106 +132,61 @@ namespace ConversionService
                 Name, runId, files.Count, _s.InputFolder);
 
             // compteurs du passage
-            int notReady = 0, readErrors = 0, routeErrors = 0, noChannel = 0;
+            int notReady = 0, readErrors = 0;
 
-            // NB : BatchSize n'est PLUS appliqué ici globalement. Il découpe
-            // les fichiers de CHAQUE canal en lots (voir la génération par canal
-            // plus bas) : 30 fichiers d'un canal avec BatchSize=5 => 6 sorties.
+            // sortie unique du pipeline (plus de routage par Buyer)
+            var ch = _s.Output;
+            if (ch == null) { Log.Error("{0}: pipeline sans sortie (Output null).", Name); return; }
 
-            // regroupe les fichiers par canal (routage par Buyer)
-            var byChannel = new Dictionary<OutputChannel, List<string>>();
-            var routedFiles = new List<string>();
-
+            // on ne garde que les fichiers prêts (écriture terminée)
+            var ready = new List<string>();
             foreach (var file in files)
             {
                 if (token.IsCancellationRequested) return;
                 _pauseGate.Wait(token);
-
-                if (!IsFileReady(file)) { notReady++; continue; } // encore en écriture
-
-                string content;
-                try { content = File.ReadAllText(file); }
-                catch (Exception ex) { readErrors++; Log.Error(ex, "{0}: [run {1}] lecture échouée {2}", Name, runId, file); MoveToError(file); continue; }
-
-                string err;
-                var buyer = PipelineEngine.ReadBuyer(content, _s, out err);
-                if (err != null) { routeErrors++; Log.Error("{0}: [run {1}] {2} ({3})", Name, runId, err, file); MoveToError(file); continue; }
-
-                var ch = PipelineEngine.SelectChannel(_s, buyer);
-                if (ch == null)
-                {
-                    noChannel++;
-                    Log.Warn("{0}: [run {1}] aucun canal pour Buyer '{2}' ({3})", Name, runId, buyer, file);
-                    MoveToError(file);
-                    continue;
-                }
-
-                Log.Debug("{0}: [run {1}] {2} -> Buyer '{3}' -> canal '{4}'",
-                    Name, runId, Path.GetFileName(file), buyer, ch.Name);
-
-                if (!byChannel.ContainsKey(ch)) byChannel[ch] = new List<string>();
-                byChannel[ch].Add(file);
-                routedFiles.Add(file);
+                if (!IsFileReady(file)) { notReady++; continue; }
+                ready.Add(file);
             }
 
-            // génère les sorties par canal, découpées en lots de BatchSize
-            int channelsOk = 0, channelsFailed = 0, delivered = 0, outputsWritten = 0, pendedOutputs = 0;
-            foreach (var kv in byChannel)
+            // découpe en lots (BatchSize du canal ; 0 = un seul lot)
+            int delivered = 0, outputsWritten = 0, pendedOutputs = 0;
+            bool hadFailure = false;
+
+            var batches = SplitIntoBatches(ready, ch.BatchSize);
+            int totalBatches = batches.Count;
+            int batchNo = 0;
+
+            foreach (var batch in batches)
             {
                 if (token.IsCancellationRequested) return;
-                var ch = kv.Key;
-                var chFiles = kv.Value;
-
-                // découpe les fichiers de ce canal en lots (BatchSize DU CANAL ; 0 = un seul lot)
-                var batches = SplitIntoBatches(chFiles, ch.BatchSize);
-                int totalBatches = batches.Count;
-                int batchNo = 0;
-                bool channelHadFailure = false;
-
-                foreach (var batch in batches)
+                batchNo++;
+                try
                 {
-                    if (token.IsCancellationRequested) return;
-                    batchNo++;
-                    try
-                    {
-                        bool deliveredNow = WriteChannelOutput(ch, batch, runId, batchNo, totalBatches, token);
-                        // le contenu est sécurisé (déposé OU mis en attente) : on archive les sources
-                        foreach (var f in batch) Archive(f);
-                        if (deliveredNow) { delivered += batch.Count; outputsWritten++; }
-                        else { pendedOutputs++; channelHadFailure = true; }
-                    }
-                    catch (Exception ex)
-                    {
-                        // échec RARE : même la mise en attente a échoué -> on NE archive
-                        // PAS (les sources restent en entrée, retraitées au prochain passage).
-                        channelHadFailure = true;
-                        Log.Error(ex, "{0}: [run {1}] canal '{2}' lot {3}/{4} : génération/mise en attente impossible, {5} source(s) conservée(s).",
-                            Name, runId, ch.Name, batchNo, totalBatches, batch.Count);
-                    }
+                    bool deliveredNow = WriteChannelOutput(ch, batch, runId, batchNo, totalBatches, token);
+                    // le contenu est sécurisé (déposé OU mis en attente) : on archive les sources
+                    foreach (var f in batch) Archive(f);
+                    if (deliveredNow) { delivered += batch.Count; outputsWritten++; }
+                    else { pendedOutputs++; hadFailure = true; }
                 }
-
-                if (channelHadFailure) channelsFailed++; else channelsOk++;
+                catch (Exception ex)
+                {
+                    hadFailure = true;
+                    Log.Error(ex, "{0}: [run {1}] lot {2}/{3} : génération/mise en attente impossible, {4} source(s) conservée(s).",
+                        Name, runId, batchNo, totalBatches, batch.Count);
+                }
             }
 
             sw.Stop();
-            // résumé de fin de passage — la ligne à lire d'un coup d'œil
             var summary = string.Format(
-                "[run {0}] terminé en {1} ms — {2} fichier(s) source traité(s) en {3} sortie(s) déposée(s), {4} sortie(s) en attente de transfert | canaux OK={5} en échec={6} | ignorés(non prêts)={7} | erreurs lecture={8} routage={9} sans-canal={10}",
-                runId, sw.ElapsedMilliseconds, delivered, outputsWritten, pendedOutputs,
-                channelsOk, channelsFailed, notReady, readErrors, routeErrors, noChannel);
+                "[run {0}] terminé en {1} ms — {2} fichier(s) source traité(s) en {3} sortie(s) déposée(s), {4} sortie(s) en attente | ignorés(non prêts)={5} | erreurs lecture={6}",
+                runId, sw.ElapsedMilliseconds, delivered, outputsWritten, pendedOutputs, notReady, readErrors);
             Log.Info("{0}: {1}", Name, summary);
 
-            // événement de supervision Windows : gravité selon les incidents du passage
-            // (une sortie en attente de transfert compte comme une anomalie)
-            int problems = channelsFailed + readErrors + routeErrors + noChannel + pendedOutputs;
+            int problems = (hadFailure ? 1 : 0) + readErrors + pendedOutputs;
             if (problems > 0)
-                EventLogWriter.Warn(
-                    "Passage terminé avec des anomalies. " + summary,
-                    EventLogWriter.EvtRunErrors);
+                EventLogWriter.Warn("Passage terminé avec des anomalies. " + summary, EventLogWriter.EvtRunErrors);
             else
-                EventLogWriter.Info(
-                    "Passage OK. " + summary,
-                    EventLogWriter.EvtRunSummary);
+                EventLogWriter.Info("Passage OK. " + summary, EventLogWriter.EvtRunSummary);
         }
 
         /// <summary>

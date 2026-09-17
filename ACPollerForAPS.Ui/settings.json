@@ -1,47 +1,44 @@
 {
-  "Pipeline": {
-    "InputFolder": "C:\\ACPoller\\In",
-    "ArchiveFolder": "C:\\ACPoller\\Archive",
-    "ErrorFolder": "C:\\ACPoller\\Error",
-    "ArchiveEnabled": true,
-    "FileFilter": "*.xml",
-    "StableCheckMs": 1000,
-    "RecordPath": "/InvoiceData",
-    "BuyerPath": "Header/Buyer/BuyerId",
-    "Schedule": {
-      "IntervalValue": 24,
-      "IntervalUnit": "Hours"
-    },
-    "BatchSize": 0,
-    "Channels": [
-      {
-        "Name": "Dynamics AX",
+  "Pipelines": [
+    {
+      "Name": "APS vers Optima",
+      "InputFolder": "C:\\ACPoller\\APS_In",
+      "ArchiveFolder": "C:\\ACPoller\\APS_In\\Archive",
+      "ErrorFolder": "C:\\ACPoller\\APS_In\\Error",
+      "ArchiveEnabled": true,
+      "FileFilter": "*.xml",
+      "StableCheckMs": 1000,
+      "RecordPath": "/InvoiceData",
+      "Schedule": {
+        "IntervalValue": 5,
+        "IntervalUnit": "Minutes"
+      },
+      "Output": {
+        "Name": "Optima (Comarch)",
         "Enabled": true,
-        "Buyers": [
-          "BUYER-US-001",
-          "BUYER-US-002"
-        ],
-        "OutputFormat": "Csv",
+        "Buyers": [],
+        "OutputFormat": "Xml",
         "Provider": "mapping",
-        "OutputFolder": "C:\\ACPoller\\Out\\DynamicsAX",
-        "OutputFileName": "{date}.csv",
+        "OutputFolder": "C:\\ACPoller\\Out\\Optima",
+        "OutputFileName": "FA_{date}_{time}.xml",
         "RecordPath": "/InvoiceData",
         "LinesPath": "AccountingLines/AccountingLine",
         "WriteRecordEvenIfNoLines": false,
-        "SampleXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<InvoiceData>\n  <Header>\n    <InvoiceNumber>INV-2026-89412</InvoiceNumber>\n    <InvoiceDate>2026-08-15</InvoiceDate>\n    <DueDate>2026-09-14</DueDate>\n    <Currency>USD</Currency>\n    <Buyer><BuyerId>BUYER-US-001</BuyerId><CompanyCode>1000</CompanyCode></Buyer>\n    <Supplier><SupplierCode>VEND-88402</SupplierCode><SupplierName>Apex Office Supplies Inc</SupplierName></Supplier>\n  </Header>\n  <AccountingLines>\n    <AccountingLine lineNumber=\"1\"><PostingType>Credit</PostingType><GLAccount>200000</GLAccount><Amount>-1250.00</Amount><CostCenter/><ProfitCenter/><Dimensions><Dimension1>CORP</Dimension1></Dimensions></AccountingLine>\n    <AccountingLine lineNumber=\"2\"><PostingType>Debit</PostingType><GLAccount>610000</GLAccount><Amount>680.00</Amount><CostCenter>CC-4100</CostCenter><ProfitCenter>PC-100</ProfitCenter><Dimensions><Dimension1>CORP</Dimension1><Dimension2>PROJ-992</Dimension2></Dimensions></AccountingLine>\n    <AccountingLine lineNumber=\"3\"><PostingType>Debit</PostingType><GLAccount>610050</GLAccount><Amount>500.00</Amount><CostCenter>CC-4200</CostCenter><ProfitCenter>PC-100</ProfitCenter><Dimensions><Dimension1>CORP</Dimension1><Dimension2>PROJ-992</Dimension2></Dimensions></AccountingLine>\n  </AccountingLines>\n</InvoiceData>\n",
+        "BatchSize": 0,
+        "SampleXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<InvoiceData>\n  <Header>\n    <InvoiceNumber>INV-2026-89412</InvoiceNumber>\n    <InvoiceDate>2026-08-15</InvoiceDate>\n    <DueDate>2026-09-14</DueDate>\n    <Currency>PLN</Currency>\n    <GrossAmount>1230.00</GrossAmount><NetAmount>1000.00</NetAmount><TaxAmount>230.00</TaxAmount>\n    <Buyer><BuyerId>BUYER-PL-001</BuyerId><CompanyCode>2000</CompanyCode></Buyer>\n    <Supplier><SupplierCode>VEND-55201</SupplierCode><SupplierName>Nowak Biuro Sp. z o.o.</SupplierName><TaxRegistrationNumber>PL1234567890</TaxRegistrationNumber></Supplier>\n  </Header>\n  <AccountingLines>\n    <AccountingLine lineNumber=\"1\"><PostingType>Debit</PostingType><GLAccount>401-01</GLAccount><GLAccountDescription>Uslugi biurowe</GLAccountDescription><Amount>1000.00</Amount><TaxAmount>230.00</TaxAmount><TaxCode>23</TaxCode><Dimensions><Dimension1>CORP</Dimension1></Dimensions></AccountingLine>\n  </AccountingLines>\n</InvoiceData>\n",
         "CsvFormat": {
           "Delimiter": ",",
           "Quote": "\"",
           "QuoteAllFields": false,
-          "DecimalSeparator": ",",
-          "DateFormat": "dd.MM.yyyy",
-          "WriteHeader": false,
+          "DecimalSeparator": ".",
+          "DateFormat": "yyyy-MM-dd",
+          "WriteHeader": true,
           "Encoding": "UTF-8"
         },
         "XmlFormat": {
-          "RootElement": "Invoices",
-          "RecordElement": "Invoice",
-          "LineElement": "Line",
+          "RootElement": "ROOT",
+          "RecordElement": "FAKTURA_ZAKUPU",
+          "LineElement": "POZYCJA",
           "DecimalSeparator": ".",
           "DateFormat": "yyyy-MM-dd",
           "Encoding": "UTF-8"
@@ -67,141 +64,274 @@
         },
         "Fields": [
           {
-            "Name": "RecordType",
+            "Name": "Numer",
             "Type": "text",
-            "Source": "fixed",
-            "Value": "101"
+            "Source": "header",
+            "Path": "Header/InvoiceNumber"
           },
           {
-            "Name": "PostingDate",
+            "Name": "DataWystawienia",
             "Type": "date",
             "Source": "header",
             "Path": "Header/InvoiceDate",
             "InFormat": "yyyy-MM-dd"
           },
           {
-            "Name": "DueDate",
+            "Name": "TerminPlatnosci",
             "Type": "date",
             "Source": "header",
             "Path": "Header/DueDate",
             "InFormat": "yyyy-MM-dd"
           },
           {
-            "Name": "LineType",
-            "Type": "text",
-            "Source": "line",
-            "Path": "PostingType",
-            "Values": {
-              "Credit": "Vendor",
-              "Debit": "Ledger"
-            }
-          },
-          {
-            "Name": "Account",
-            "Type": "text",
-            "Source": "line",
-            "Path": "GLAccount"
-          },
-          {
-            "Name": "Col5",
-            "Type": "text",
-            "Source": "fixed",
-            "Value": ""
-          },
-          {
-            "Name": "Col6",
-            "Type": "text",
-            "Source": "fixed",
-            "Value": ""
-          },
-          {
-            "Name": "Col7",
-            "Type": "text",
-            "Source": "fixed",
-            "Value": ""
-          },
-          {
-            "Name": "Dim8",
-            "Type": "text",
-            "Source": "line",
-            "Path": "Dimensions/Dimension2",
-            "OnlyWhenPath": "PostingType",
-            "OnlyWhenEquals": "Debit"
-          },
-          {
-            "Name": "Col9",
-            "Type": "text",
-            "Source": "fixed",
-            "Value": ""
-          },
-          {
-            "Name": "Col10",
-            "Type": "text",
-            "Source": "fixed",
-            "Value": ""
-          },
-          {
-            "Name": "InvoiceRef",
-            "Type": "text",
-            "Source": "header",
-            "Path": "Header/InvoiceNumber"
-          },
-          {
-            "Name": "Description",
-            "Type": "text",
-            "Source": "line",
-            "Path": "GLAccountDescription"
-          },
-          {
-            "Name": "Debit",
-            "Type": "amount",
-            "Source": "line",
-            "Path": "Amount",
-            "DecDigits": 2,
-            "AbsoluteValue": true,
-            "OnlyWhenPath": "PostingType",
-            "OnlyWhenEquals": "Debit"
-          },
-          {
-            "Name": "Credit",
-            "Type": "amount",
-            "Source": "line",
-            "Path": "Amount",
-            "DecDigits": 2,
-            "AbsoluteValue": true,
-            "OnlyWhenPath": "PostingType",
-            "OnlyWhenEquals": "Credit"
-          },
-          {
-            "Name": "Currency",
+            "Name": "Waluta",
             "Type": "text",
             "Source": "header",
             "Path": "Header/Currency"
           },
           {
-            "Name": "APcode",
+            "Name": "KontrahentKod",
+            "Type": "text",
+            "Source": "header",
+            "Path": "Header/Supplier/SupplierCode"
+          },
+          {
+            "Name": "KontrahentNazwa",
+            "Type": "text",
+            "Source": "header",
+            "Path": "Header/Supplier/SupplierName"
+          },
+          {
+            "Name": "KontrahentNIP",
+            "Type": "text",
+            "Source": "header",
+            "Path": "Header/Supplier/TaxRegistrationNumber"
+          },
+          {
+            "Name": "NettoRazem",
+            "Type": "amount",
+            "Source": "header",
+            "Path": "Header/NetAmount",
+            "DecDigits": 2
+          },
+          {
+            "Name": "VATRazem",
+            "Type": "amount",
+            "Source": "header",
+            "Path": "Header/TaxAmount",
+            "DecDigits": 2
+          },
+          {
+            "Name": "BruttoRazem",
+            "Type": "amount",
+            "Source": "header",
+            "Path": "Header/GrossAmount",
+            "DecDigits": 2
+          },
+          {
+            "Name": "Konto",
             "Type": "text",
             "Source": "line",
-            "Path": "Dimensions/Dimension1",
-            "OnlyWhenPath": "PostingType",
-            "OnlyWhenEquals": "Debit"
+            "Path": "GLAccount"
           },
           {
-            "Name": "GLdim",
+            "Name": "Opis",
             "Type": "text",
-            "Source": "fixed",
-            "Value": ""
+            "Source": "line",
+            "Path": "GLAccountDescription"
           },
           {
-            "Name": "VendorCtrl",
+            "Name": "Netto",
+            "Type": "amount",
+            "Source": "line",
+            "Path": "Amount",
+            "DecDigits": 2,
+            "AbsoluteValue": true
+          },
+          {
+            "Name": "VAT",
+            "Type": "amount",
+            "Source": "line",
+            "Path": "TaxAmount",
+            "DecDigits": 2,
+            "AbsoluteValue": true
+          },
+          {
+            "Name": "StawkaVAT",
             "Type": "text",
-            "Source": "fixed",
-            "Value": "600082",
-            "OnlyWhenPath": "PostingType",
-            "OnlyWhenEquals": "Credit"
+            "Source": "line",
+            "Path": "TaxCode"
+          },
+          {
+            "Name": "Wymiar1",
+            "Type": "text",
+            "Source": "line",
+            "Path": "Dimensions/Dimension1"
           }
         ]
       }
-    ]
-  }
+    },
+    {
+      "Name": "Optima vers APS",
+      "InputFolder": "C:\\ACPoller\\Optima_In",
+      "ArchiveFolder": "C:\\ACPoller\\Optima_In\\Archive",
+      "ErrorFolder": "C:\\ACPoller\\Optima_In\\Error",
+      "ArchiveEnabled": true,
+      "FileFilter": "*.xml",
+      "StableCheckMs": 1000,
+      "RecordPath": "/ROOT/DOKUMENT",
+      "Schedule": {
+        "IntervalValue": 5,
+        "IntervalUnit": "Minutes"
+      },
+      "Output": {
+        "Name": "APS",
+        "Enabled": true,
+        "Buyers": [],
+        "OutputFormat": "Xml",
+        "Provider": "mapping",
+        "OutputFolder": "C:\\ACPoller\\Out\\APS",
+        "OutputFileName": "APS_{date}_{time}.xml",
+        "RecordPath": "/ROOT/DOKUMENT",
+        "LinesPath": "POZYCJE/POZYCJA",
+        "WriteRecordEvenIfNoLines": false,
+        "BatchSize": 0,
+        "SampleXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<ROOT xmlns=\"http://www.cdn.com.pl/optima/dokument\">\n\t<DOKUMENT>\n\t\t<NAGLOWEK>\n\t\t\t<GENERATOR>Comarch Opt!ma</GENERATOR>\n\t\t\t<TYP_DOKUMENTU>302</TYP_DOKUMENTU>\n\t\t\t<RODZAJ_DOKUMENTU>302000</RODZAJ_DOKUMENTU>\n\t\t\t<FV_MARZA>0</FV_MARZA>\n\t\t\t<FV_MARZA_RODZAJ>0</FV_MARZA_RODZAJ>\n\t\t\t<NUMER_PELNY>FA/2/2026</NUMER_PELNY>\n\t\t\t<DATA_DOKUMENTU>2026-09-17</DATA_DOKUMENTU>\n\t\t\t<DATA_WYSTAWIENIA>2026-09-17</DATA_WYSTAWIENIA>\n\t\t\t<DATA_OPERACJI>2026-09-17</DATA_OPERACJI>\n\t\t\t<TERMIN_ZWROTU_KAUCJI>2026-11-16</TERMIN_ZWROTU_KAUCJI>\n\t\t\t<KOREKTA>0</KOREKTA>\n\t\t\t<DETAL>0</DETAL>\n\t\t\t<TYP_NETTO_BRUTTO>1</TYP_NETTO_BRUTTO>\n\t\t\t<RABAT>0.00</RABAT>\n\t\t\t<OPIS>Dok.: FA/2/2026 (Faktura sprzedaży)\nKonto EURO - 324324234243\nKonto GBP 0323232323\nKonto ING 123t4345</OPIS>\n\t\t\t<SYSTEMKAUCYJNY>0</SYSTEMKAUCYJNY>\n\t\t\t<PLATNIK>\n\t\t\t\t<KOD>2323</KOD>\n\t\t\t\t<NIP_KRAJ/>\n\t\t\t\t<NIP>213123123</NIP>\n\t\t\t\t<GLN/>\n\t\t\t\t<NAZWA>232323</NAZWA>\n\t\t\t\t<MPP>0</MPP>\n\t\t\t\t<ADRES>\n\t\t\t\t\t<KOD_POCZTOWY/>\n\t\t\t\t\t<MIASTO/>\n\t\t\t\t\t<ULICA/>\n\t\t\t\t\t<KRAJ>Polska</KRAJ>\n\t\t\t\t</ADRES>\n\t\t\t</PLATNIK>\n\t\t\t<ODBIORCA>\n\t\t\t\t<KOD>2323</KOD>\n\t\t\t\t<NIP_KRAJ/>\n\t\t\t\t<NIP>213123123</NIP>\n\t\t\t\t<GLN/>\n\t\t\t\t<NAZWA>232323</NAZWA>\n\t\t\t\t<ADRES>\n\t\t\t\t\t<KOD_POCZTOWY/>\n\t\t\t\t\t<MIASTO/>\n\t\t\t\t\t<ULICA/>\n\t\t\t\t\t<KRAJ>Polska</KRAJ>\n\t\t\t\t</ADRES>\n\t\t\t</ODBIORCA>\n\t\t\t<SPRZEDAWCA>\n\t\t\t\t<NIP_KRAJ>PL</NIP_KRAJ>\n\t\t\t\t<NIP>999-33-22-111</NIP>\n\t\t\t\t<GLN>0000000000000</GLN>\n\t\t\t\t<NAZWA>Firma Handlowo - Usługowa OGRODNIK Spółka jawna</NAZWA>\n\t\t\t\t<ADRES>\n\t\t\t\t\t<KOD_POCZTOWY>31-124</KOD_POCZTOWY>\n\t\t\t\t\t<MIASTO>Kraków</MIASTO>\n\t\t\t\t\t<ULICA>Klinowa 11</ULICA>\n\t\t\t\t\t<KRAJ>Polska</KRAJ>\n\t\t\t\t</ADRES>\n\t\t\t\t<NUMER_KONTA_BANKOWEGO/>\n\t\t\t\t<NAZWA_BANKU/>\n\t\t\t</SPRZEDAWCA>\n\t\t\t<KATEGORIA>\n\t\t\t\t<KOD/>\n\t\t\t\t<OPIS/>\n\t\t\t</KATEGORIA>\n\t\t\t<PLATNOSC>\n\t\t\t\t<FORMA>gotówka</FORMA>\n\t\t\t\t<TERMIN>2026-09-17</TERMIN>\n\t\t\t\t<MPP>0</MPP>\n\t\t\t</PLATNOSC>\n\t\t\t<WALUTA>\n\t\t\t\t<SYMBOL>PLN</SYMBOL>\n\t\t\t\t<KURS_L>1.00</KURS_L>\n\t\t\t\t<KURS_M>1</KURS_M>\n\t\t\t\t<PLAT_WAL_OD_PLN>0</PLAT_WAL_OD_PLN>\n\t\t\t\t<KURS_NUMER>3</KURS_NUMER>\n\t\t\t\t<KURS_DATA>2026-09-17</KURS_DATA>\n\t\t\t</WALUTA>\n\t\t\t<KWOTY>\n\t\t\t\t<RAZEM_NETTO_WAL>12.50</RAZEM_NETTO_WAL>\n\t\t\t\t<RAZEM_NETTO>12.50</RAZEM_NETTO>\n\t\t\t\t<RAZEM_BRUTTO>12.50</RAZEM_BRUTTO>\n\t\t\t\t<RAZEM_VAT>0.00</RAZEM_VAT>\n\t\t\t</KWOTY>\n\t\t\t<MAGAZYN_ZRODLOWY>MAGAZYN</MAGAZYN_ZRODLOWY>\n\t\t\t<MAGAZYN_DOCELOWY/>\n\t\t\t<KAUCJE_PLATNOSCI>0</KAUCJE_PLATNOSCI>\n\t\t\t<BLOKADA_PLATNOSCI>0</BLOKADA_PLATNOSCI>\n\t\t\t<VAT_DLA_DOK_WAL>0</VAT_DLA_DOK_WAL>\n\t\t\t<TRYB_NETTO_VAT>0</TRYB_NETTO_VAT>\n\t\t\t<STATUS_PLATNIKA>1</STATUS_PLATNIKA>\n\t\t\t<ROZLICZAM_PODATEK_W_OSS>0</ROZLICZAM_PODATEK_W_OSS>\n\t\t</NAGLOWEK>\n\t\t<POZYCJE>\n\t\t\t<POZYCJA>\n\t\t\t\t<LP>1</LP>\n\t\t\t\t<TOWAR>\n\t\t\t\t\t<KOD>GRABIE_LIŚCIE</KOD>\n\t\t\t\t\t<NAZWA>Grabie do liści</NAZWA>\n\t\t\t\t\t<OPIS>KOLOR czerwona NUMER SERYJNY</OPIS>\n\t\t\t\t\t<EAN/>\n\t\t\t\t\t<SWW/>\n\t\t\t\t\t<NUMER_KATALOGOWY>AKC/0002</NUMER_KATALOGOWY>\n\t\t\t\t\t<MPP>0</MPP>\n\t\t\t\t</TOWAR>\n\t\t\t\t<STAWKA_VAT>\n\t\t\t\t\t<STAWKA>0.00</STAWKA>\n\t\t\t\t\t<FLAGA>2</FLAGA>\n\t\t\t\t\t<ZRODLOWA>0.00</ZRODLOWA>\n\t\t\t\t</STAWKA_VAT>\n\t\t\t\t<CENY>\n\t\t\t\t\t<CENAZCZTEREMAMIEJSCAMI>0</CENAZCZTEREMAMIEJSCAMI>\n\t\t\t\t\t<POCZATKOWA_WAL_CENNIKA>12.5000</POCZATKOWA_WAL_CENNIKA>\n\t\t\t\t\t<POCZATKOWA_WAL_DOKUMENTU>12.5000</POCZATKOWA_WAL_DOKUMENTU>\n\t\t\t\t\t<PO_RABACIE_WAL_CENNIKA>12.5000</PO_RABACIE_WAL_CENNIKA>\n\t\t\t\t\t<PO_RABACIE_PLN>12.5000</PO_RABACIE_PLN>\n\t\t\t\t\t<PO_RABACIE_WAL_DOKUMENTU>12.5000</PO_RABACIE_WAL_DOKUMENTU>\n\t\t\t\t</CENY>\n\t\t\t\t<WALUTA>\n\t\t\t\t\t<SYMBOL>PLN</SYMBOL>\n\t\t\t\t\t<KURS_L>1.00</KURS_L>\n\t\t\t\t\t<KURS_M>1</KURS_M>\n\t\t\t\t</WALUTA>\n\t\t\t\t<RABAT>0.00</RABAT>\n\t\t\t\t<WARTOSC_NETTO>12.50</WARTOSC_NETTO>\n\t\t\t\t<WARTOSC_BRUTTO>12.50</WARTOSC_BRUTTO>\n\t\t\t\t<WARTOSC_NETTO_WAL>12.50</WARTOSC_NETTO_WAL>\n\t\t\t\t<WARTOSC_BRUTTO_WAL>12.50</WARTOSC_BRUTTO_WAL>\n\t\t\t\t<ILOSC>1.0000</ILOSC>\n\t\t\t\t<JM>szt</JM>\n\t\t\t\t<JM_CALKOWITE>1.00</JM_CALKOWITE>\n\t\t\t\t<JM_ZLOZONA>\n\t\t\t\t\t<JMZ>szt</JMZ>\n\t\t\t\t\t<JM_PRZELICZNIK_L>1.00</JM_PRZELICZNIK_L>\n\t\t\t\t\t<JM_PRZELICZNIK_M>1</JM_PRZELICZNIK_M>\n\t\t\t\t</JM_ZLOZONA>\n\t\t\t</POZYCJA>\n\t\t</POZYCJE>\n\t\t<KAUCJE/>\n\t\t<PLATNOSCI>\n\t\t\t<PLATNOSC>\n\t\t\t\t<FORMA>gotówka</FORMA>\n\t\t\t\t<TERMIN>2026-09-17</TERMIN>\n\t\t\t\t<KWOTA>12.50</KWOTA>\n\t\t\t\t<KWOTA_W_WAL_SYSTEMOWEJ>12.50</KWOTA_W_WAL_SYSTEMOWEJ>\n\t\t\t\t<WALUTA>\n\t\t\t\t\t<SYMBOL/>\n\t\t\t\t\t<KURS_L>1.00</KURS_L>\n\t\t\t\t\t<KURS_M>1</KURS_M>\n\t\t\t\t</WALUTA>\n\t\t\t</PLATNOSC>\n\t\t</PLATNOSCI>\n\t\t<PLATNOSCI_KAUCJE/>\n\t\t<TABELKA_VAT>\n\t\t\t<LINIA_VAT>\n\t\t\t\t<STAWKA_VAT>\n\t\t\t\t\t<STAWKA>0.00</STAWKA>\n\t\t\t\t\t<FLAGA>2</FLAGA>\n\t\t\t\t\t<ZRODLOWA>0.00</ZRODLOWA>\n\t\t\t\t</STAWKA_VAT>\n\t\t\t\t<NETTO>12.50</NETTO>\n\t\t\t\t<VAT>0.00</VAT>\n\t\t\t\t<BRUTTO>12.50</BRUTTO>\n\t\t\t\t<NETTO_WAL>12.50</NETTO_WAL>\n\t\t\t\t<VAT_WAL>0.00</VAT_WAL>\n\t\t\t\t<BRUTTO_WAL>12.50</BRUTTO_WAL>\n\t\t\t</LINIA_VAT>\n\t\t</TABELKA_VAT>\n\t\t<ATRYBUTY/>\n\t\t<KODY_JPK_V7/>\n\t</DOKUMENT>\n</ROOT>\n",
+        "CsvFormat": {
+          "Delimiter": ",",
+          "Quote": "\"",
+          "QuoteAllFields": false,
+          "DecimalSeparator": ".",
+          "DateFormat": "yyyy-MM-dd",
+          "WriteHeader": true,
+          "Encoding": "UTF-8"
+        },
+        "XmlFormat": {
+          "RootElement": "InvoiceData",
+          "RecordElement": "Invoice",
+          "LineElement": "AccountingLine",
+          "DecimalSeparator": ".",
+          "DateFormat": "yyyy-MM-dd",
+          "Encoding": "UTF-8"
+        },
+        "Transport": {
+          "Type": "Fs",
+          "RetryCount": 3,
+          "RetryDelayMs": 5000,
+          "Host": "",
+          "Port": 21,
+          "RemoteFolder": "/",
+          "Username": "",
+          "PasswordEncrypted": "",
+          "FtpsMode": "Explicit",
+          "ValidateCertificate": true,
+          "S3Bucket": "",
+          "S3KeyPrefix": "",
+          "S3Region": "eu-west-1",
+          "S3ServiceUrl": "",
+          "S3ForcePathStyle": false,
+          "S3AccessKey": "",
+          "S3SecretKeyEncrypted": ""
+        },
+        "Fields": [
+          {
+            "Name": "InvoiceNumber",
+            "Type": "text",
+            "Source": "header",
+            "Path": "NAGLOWEK/NUMER_PELNY"
+          },
+          {
+            "Name": "InvoiceDate",
+            "Type": "date",
+            "Source": "header",
+            "Path": "NAGLOWEK/DATA_WYSTAWIENIA",
+            "InFormat": "yyyy-MM-dd"
+          },
+          {
+            "Name": "DueDate",
+            "Type": "date",
+            "Source": "header",
+            "Path": "NAGLOWEK/PLATNOSC/TERMIN",
+            "InFormat": "yyyy-MM-dd"
+          },
+          {
+            "Name": "Currency",
+            "Type": "text",
+            "Source": "header",
+            "Path": "NAGLOWEK/WALUTA/SYMBOL"
+          },
+          {
+            "Name": "SupplierCode",
+            "Type": "text",
+            "Source": "header",
+            "Path": "NAGLOWEK/SPRZEDAWCA/NIP"
+          },
+          {
+            "Name": "SupplierName",
+            "Type": "text",
+            "Source": "header",
+            "Path": "NAGLOWEK/SPRZEDAWCA/NAZWA"
+          },
+          {
+            "Name": "NetAmount",
+            "Type": "amount",
+            "Source": "header",
+            "Path": "NAGLOWEK/KWOTY/RAZEM_NETTO",
+            "DecDigits": 2
+          },
+          {
+            "Name": "TaxAmount",
+            "Type": "amount",
+            "Source": "header",
+            "Path": "NAGLOWEK/KWOTY/RAZEM_VAT",
+            "DecDigits": 2
+          },
+          {
+            "Name": "GrossAmount",
+            "Type": "amount",
+            "Source": "header",
+            "Path": "NAGLOWEK/KWOTY/RAZEM_BRUTTO",
+            "DecDigits": 2
+          },
+          {
+            "Name": "GLAccount",
+            "Type": "text",
+            "Source": "line",
+            "Path": "TOWAR/KOD"
+          },
+          {
+            "Name": "GLAccountDescription",
+            "Type": "text",
+            "Source": "line",
+            "Path": "TOWAR/NAZWA"
+          },
+          {
+            "Name": "Amount",
+            "Type": "amount",
+            "Source": "line",
+            "Path": "WARTOSC_NETTO",
+            "DecDigits": 2
+          },
+          {
+            "Name": "TaxRate",
+            "Type": "text",
+            "Source": "line",
+            "Path": "STAWKA_VAT/STAWKA"
+          },
+          {
+            "Name": "Quantity",
+            "Type": "text",
+            "Source": "line",
+            "Path": "ILOSC"
+          },
+          {
+            "Name": "Unit",
+            "Type": "text",
+            "Source": "line",
+            "Path": "JM"
+          }
+        ]
+      }
+    }
+  ]
 }

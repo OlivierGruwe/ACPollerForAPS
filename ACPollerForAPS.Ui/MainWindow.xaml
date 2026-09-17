@@ -169,6 +169,25 @@
             </DockPanel>
         </Border>
 
+        <!-- Pipeline selector : choisit le pipeline courant -->
+        <Border DockPanel.Dock="Top" Background="{DynamicResource MahApps.Brushes.Gray9}"
+                BorderBrush="{DynamicResource MahApps.Brushes.Control.Border}" BorderThickness="0,0,0,1">
+            <DockPanel Margin="16,6">
+                <TextBlock DockPanel.Dock="Left" Text="Pipeline:" VerticalAlignment="Center"
+                           FontWeight="SemiBold" Foreground="{StaticResource ArondorGrey}" Margin="0,0,8,0" />
+                <Button DockPanel.Dock="Right" Content="Copy" Width="60" Margin="4,0,0,0"
+                        Command="{Binding DuplicatePipelineCommand}" ToolTip="Duplicate the selected pipeline." />
+                <Button DockPanel.Dock="Right" Content="Remove" Width="70" Margin="4,0,0,0"
+                        Command="{Binding RemovePipelineCommand}" ToolTip="Remove the selected pipeline." />
+                <Button DockPanel.Dock="Right" Content="Add" Width="60" Margin="4,0,0,0"
+                        Command="{Binding AddPipelineCommand}" ToolTip="Add a new pipeline." />
+                <ComboBox ItemsSource="{Binding Pipelines}"
+                          SelectedItem="{Binding SelectedPipeline}"
+                          DisplayMemberPath="Display"
+                          VerticalAlignment="Center" />
+            </DockPanel>
+        </Border>
+
         <!-- Status bar -->
         <Border DockPanel.Dock="Bottom" Background="{DynamicResource MahApps.Brushes.Control.Background}" Padding="12,6">
             <TextBlock Text="{Binding Status}" />
@@ -280,36 +299,17 @@
             </TabItem>
 
             <!-- ===================== CHANNELS ===================== -->
-            <TabItem Header="Output channels" Style="{StaticResource BrandTab}">
+            <TabItem Header="Output" Style="{StaticResource BrandTab}">
                 <Grid Margin="8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="240" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
 
-                    <!-- left: channel list -->
-                    <GroupBox Grid.Column="0" Header="Channels" Style="{StaticResource Section}" Margin="0,0,10,0">
-                        <DockPanel>
-                            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,6,0,0">
-                                <Button Content="Add" Command="{Binding AddChannelCommand}" Width="60" Margin="0,0,4,0" />
-                                <Button Content="Remove" Command="{Binding RemoveChannelCommand}" Width="66" Margin="0,0,4,0" />
-                                <Button Content="Copy" Command="{Binding DuplicateChannelCommand}" Width="60" />
-                            </StackPanel>
-                            <ListBox ItemsSource="{Binding Channels}"
-                                     SelectedItem="{Binding SelectedChannel}"
-                                     DisplayMemberPath="Display" />
-                        </DockPanel>
-                    </GroupBox>
-
-                    <!-- right: channel editor -->
-                    <!-- placeholder quand aucun canal n'est sélectionné -->
-                    <TextBlock Grid.Column="1" Text="Select a channel, or click Add to create one."
+                    <!-- placeholder quand aucun pipeline n'est sélectionné -->
+                    <TextBlock Text="Select or add a pipeline."
                                Foreground="Gray" HorizontalAlignment="Center" VerticalAlignment="Center" >
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">
                                 <Setter Property="Visibility" Value="Visible" />
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding HasChannel}" Value="True">
+                                    <DataTrigger Binding="{Binding HasPipeline}" Value="True">
                                         <Setter Property="Visibility" Value="Collapsed" />
                                     </DataTrigger>
                                 </Style.Triggers>
@@ -317,9 +317,9 @@
                         </TextBlock.Style>
                     </TextBlock>
 
-                    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto"
-                                  Visibility="{Binding HasChannel, Converter={StaticResource BoolToVis}}">
-                        <StackPanel DataContext="{Binding SelectedChannel}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  Visibility="{Binding HasPipeline, Converter={StaticResource BoolToVis}}">
+                        <StackPanel DataContext="{Binding Output}">
 
                             <GroupBox Header="Channel settings" Style="{StaticResource Section}">
                                 <Grid>
@@ -382,6 +382,69 @@
                                         <TextBlock Text="0 = one merged file" Foreground="Gray" FontSize="11"
                                                    VerticalAlignment="Center" Margin="10,0,0,0" />
                                     </StackPanel>
+                                </Grid>
+                            </GroupBox>
+
+                            <!-- CSV format : visible si la sortie est CSV -->
+                            <GroupBox Header="CSV format" Style="{StaticResource Section}"
+                                      Visibility="{Binding IsCsvOutput, Converter={StaticResource BoolToVis}}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150" /><ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="150" /><ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
+                                    </Grid.RowDefinitions>
+                                    <Label Grid.Row="0" Grid.Column="0" Content="Delimiter" />
+                                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding CsvDelimiter, UpdateSourceTrigger=PropertyChanged}" />
+                                    <Label Grid.Row="0" Grid.Column="2" Content="Quote" />
+                                    <TextBox Grid.Row="0" Grid.Column="3" Text="{Binding CsvQuote, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Left" Width="60" />
+                                    <Label Grid.Row="1" Grid.Column="0" Content="Decimal sep." />
+                                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding CsvDecimalSeparator, UpdateSourceTrigger=PropertyChanged}" />
+                                    <Label Grid.Row="1" Grid.Column="2" Content="Date format" />
+                                    <TextBox Grid.Row="1" Grid.Column="3" Text="{Binding CsvDateFormat, UpdateSourceTrigger=PropertyChanged}" />
+                                    <Label Grid.Row="2" Grid.Column="0" Content="Encoding" />
+                                    <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding CsvEncoding, UpdateSourceTrigger=PropertyChanged}" />
+                                    <CheckBox Grid.Row="3" Grid.Column="1" Content="Write header" IsChecked="{Binding CsvWriteHeader}" VerticalAlignment="Center" />
+                                    <CheckBox Grid.Row="3" Grid.Column="3" Content="Quote all fields" IsChecked="{Binding CsvQuoteAllFields}" VerticalAlignment="Center" />
+                                </Grid>
+                            </GroupBox>
+
+                            <!-- XML format : visible si la sortie est XML -->
+                            <GroupBox Header="XML format" Style="{StaticResource Section}"
+                                      Visibility="{Binding IsXmlOutput, Converter={StaticResource BoolToVis}}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150" /><ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
+                                        <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
+                                    </Grid.RowDefinitions>
+                                    <Label Grid.Row="0" Grid.Column="0" Content="Root element" />
+                                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding XmlRootElement, UpdateSourceTrigger=PropertyChanged}"
+                                             ToolTip="Root tag of the output file (e.g. ROOT)." />
+                                    <Label Grid.Row="1" Grid.Column="0" Content="Namespace (xmlns)" />
+                                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding XmlNamespace, UpdateSourceTrigger=PropertyChanged}"
+                                             mah:TextBoxHelper.Watermark="empty = none; e.g. http://www.cdn.com.pl/optima/dokument"
+                                             ToolTip="Default namespace (xmlns) set on the root element. Leave empty for no namespace." />
+                                    <Label Grid.Row="2" Grid.Column="0" Content="Record element" />
+                                    <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding XmlRecordElement, UpdateSourceTrigger=PropertyChanged}"
+                                             ToolTip="Tag wrapping one invoice (e.g. DOKUMENT)." />
+                                    <Label Grid.Row="3" Grid.Column="0" Content="Line wrapper" />
+                                    <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding XmlLineWrapper, UpdateSourceTrigger=PropertyChanged}"
+                                             mah:TextBoxHelper.Watermark="optional, e.g. POZYCJE"
+                                             ToolTip="Optional container around all lines (e.g. POZYCJE wraps the POZYCJA elements). Empty = lines added directly under the record." />
+                                    <Label Grid.Row="4" Grid.Column="0" Content="Line element" />
+                                    <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding XmlLineElement, UpdateSourceTrigger=PropertyChanged}"
+                                             ToolTip="Tag wrapping one accounting line (e.g. POZYCJA)." />
+                                    <Label Grid.Row="5" Grid.Column="0" Content="Decimal sep." />
+                                    <TextBox Grid.Row="5" Grid.Column="1" Text="{Binding XmlDecimalSeparator, UpdateSourceTrigger=PropertyChanged}" />
+                                    <Label Grid.Row="6" Grid.Column="0" Content="Date format" />
+                                    <TextBox Grid.Row="6" Grid.Column="1" Text="{Binding XmlDateFormat, UpdateSourceTrigger=PropertyChanged}" />
+                                    <Label Grid.Row="7" Grid.Column="0" Content="Encoding" />
+                                    <TextBox Grid.Row="7" Grid.Column="1" Text="{Binding XmlEncoding, UpdateSourceTrigger=PropertyChanged}" />
                                 </Grid>
                             </GroupBox>
 
@@ -531,15 +594,15 @@
                                                 Command="{Binding DataContext.RemoveFieldCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                 Width="100" />
                                     </StackPanel>
-                                    <DataGrid ItemsSource="{Binding Fields}" AutoGenerateColumns="False"
+                                    <DataGrid ItemsSource="{Binding DataContext.Output.Fields, RelativeSource={RelativeSource AncestorType=Window}}" AutoGenerateColumns="False"
                                               CanUserAddRows="False" Height="220"
                                               SelectedItem="{Binding DataContext.SelectedField, RelativeSource={RelativeSource AncestorType=Window}}">
                                         <DataGrid.Columns>
                                             <DataGridTextColumn Binding="{Binding Name}" Width="*">
                                                 <DataGridTextColumn.HeaderStyle>
                                                     <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridHeader}">
-                                                        <Setter Property="Content" Value="Name" />
-                                                        <Setter Property="ToolTip" Value="Output column name (CSV header) or XML element name for this field." />
+                                                        <Setter Property="Content" Value="Output path" />
+                                                        <Setter Property="ToolTip" Value="Output column (CSV) or element path (XML). For nested XML use / e.g. NAGLOWEK/SPRZEDAWCA/NIP — parent nodes are created and shared automatically." />
                                                     </Style>
                                                 </DataGridTextColumn.HeaderStyle>
                                             </DataGridTextColumn>

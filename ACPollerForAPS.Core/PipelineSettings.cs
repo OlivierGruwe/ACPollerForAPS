@@ -13,8 +13,21 @@ namespace ACPollerForAPS.Core
     // Fusionné dans settings.json sous la clé "Pipeline".
     // =====================================================================
 
+    /// <summary>
+    /// Racine de configuration multi-pipelines : { "Pipelines": [ {...} ] }.
+    /// Chaque pipeline est autonome (dossier d'entrée + une sortie) et tourne
+    /// indépendamment — permet les flux bidirectionnels (APS->Optima, Optima->APS).
+    /// </summary>
+    public class AppConfig
+    {
+        public List<PipelineSettings> Pipelines { get; set; } = new List<PipelineSettings>();
+    }
+
     public class PipelineSettings
     {
+        // nom du pipeline (affiché dans l'UI et les logs)
+        public string Name { get; set; } = "Pipeline";
+
         // répertoires communs
         public string InputFolder { get; set; } = "";
         public string ArchiveFolder { get; set; } = "";
@@ -25,15 +38,14 @@ namespace ACPollerForAPS.Core
         public string FileFilter { get; set; } = "*.xml";
         public int StableCheckMs { get; set; } = 1000;
 
-        // routage : chemin du record + chemin de la valeur de Buyer
+        // chemin du record (une facture) dans le XML d'entrée
         public string RecordPath { get; set; } = "/InvoiceData";
-        public string BuyerPath { get; set; } = "Header/Buyer/BuyerId";
 
         // planification : intervalle entre deux passages de merge
         public PipelineSchedule Schedule { get; set; } = new PipelineSchedule();
 
-        // canaux de sortie
-        public List<OutputChannel> Channels { get; set; } = new List<OutputChannel>();
+        // sortie unique du pipeline (un pipeline = une conversion = une destination)
+        public OutputChannel Output { get; set; } = new OutputChannel();
     }
 
     public class PipelineSchedule
@@ -105,13 +117,21 @@ namespace ACPollerForAPS.Core
         public string DecimalSeparator { get; set; } = ".";
         public string DateFormat { get; set; } = "yyyy-MM-dd";
         public string Encoding { get; set; } = "UTF-8";
+
+        // namespace par défaut (xmlns) posé sur l'élément racine. Vide = aucun.
+        // Ex. Comarch Optima : http://www.cdn.com.pl/optima/dokument
+        public string Namespace { get; set; } = "";
+
+        // conteneur optionnel autour des lignes (ex. Optima : "POZYCJE" enveloppe
+        // les POZYCJA). Vide = les LineElement sont ajoutés directement au record.
+        public string LineWrapper { get; set; } = "";
     }
 
     public class PipelineField
     {
         public string Name { get; set; }
         public string Type { get; set; } = "text";     // text | amount | date
-        public string Source { get; set; } = "line";   // fixed | header | xpath | line
+        public string Source { get; set; } = "line";   // fixed | header | xpath | line | sum
         public string Value { get; set; }
         public string Path { get; set; }
         public int DecDigits { get; set; } = 2;

@@ -57,7 +57,7 @@ namespace PipelineConfigWpf
             if (Vm == null) return;
             Vm.PropertyChanged += (s, e) =>
             {
-                if (e.PropertyName == nameof(MainViewModel.SelectedChannel))
+                if (e.PropertyName == nameof(MainViewModel.SelectedPipeline))
                 {
                     FtpPassword.Clear();
                     S3Secret.Clear();
@@ -80,7 +80,7 @@ namespace PipelineConfigWpf
         // Charge un fichier XML dans le SampleXml du canal courant.
         private void LoadSampleXml(object sender, RoutedEventArgs e)
         {
-            var ch = Vm?.SelectedChannel;
+            var ch = Vm?.Output;
             if (ch == null) return;
             var dlg = new Microsoft.Win32.OpenFileDialog { Filter = "XML (*.xml)|*.xml|All files (*.*)|*.*" };
             if (dlg.ShowDialog() != true) return;
@@ -100,7 +100,7 @@ namespace PipelineConfigWpf
         // Re-scanne le SampleXml du canal pour mettre à jour la liste des Path.
         private void RefreshPaths(object sender, RoutedEventArgs e)
         {
-            var ch = Vm?.SelectedChannel;
+            var ch = Vm?.Output;
             if (ch == null) return;
             Vm.LoadReferencePaths(ch.SampleXml);
         }
@@ -112,7 +112,7 @@ namespace PipelineConfigWpf
         /// </summary>
         private void ApplyPasswordIfTyped()
         {
-            var ch = Vm?.SelectedChannel;
+            var ch = Vm?.Output;
             if (ch == null) return;
             var typedFtp = FtpPassword.Password;
             if (!string.IsNullOrEmpty(typedFtp))
@@ -130,7 +130,7 @@ namespace PipelineConfigWpf
 
         private void TestFtps(object sender, RoutedEventArgs e)
         {
-            var ch = Vm?.SelectedChannel;
+            var ch = Vm?.Output;
             if (ch == null) return;
             ApplyPasswordIfTyped();
 
@@ -163,7 +163,7 @@ namespace PipelineConfigWpf
 
         private void TestS3(object sender, RoutedEventArgs e)
         {
-            var ch = Vm?.SelectedChannel;
+            var ch = Vm?.Output;
             if (ch == null) return;
             ApplyPasswordIfTyped();
 

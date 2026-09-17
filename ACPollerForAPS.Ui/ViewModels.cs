@@ -90,7 +90,7 @@ namespace PipelineConfigWpf
 
         // listes pour les ComboBox de la grille
         public static string[] Types => new[] { "text", "amount", "date" };
-        public static string[] Sources => new[] { "fixed", "header", "xpath", "line" };
+        public static string[] Sources => new[] { "fixed", "header", "xpath", "line", "sum" };
 
         public static FieldVm FromModel(PipelineField f) => new FieldVm
         {
@@ -122,7 +122,7 @@ namespace PipelineConfigWpf
         public string Name { get => _name; set { Set(ref _name, value); OnPropertyChanged(nameof(Display)); } }
         public bool Enabled { get => _enabled; set { Set(ref _enabled, value); OnPropertyChanged(nameof(Display)); } }
         public string BuyersCsv { get => _buyersCsv; set => Set(ref _buyersCsv, value); } // "A;B;C"
-        public string OutputFormat { get => _outputFormat; set => Set(ref _outputFormat, value); }
+        public string OutputFormat { get => _outputFormat; set { Set(ref _outputFormat, value); OnPropertyChanged(nameof(IsXmlOutput)); OnPropertyChanged(nameof(IsCsvOutput)); } }
         public string Provider { get => _provider; set => Set(ref _provider, value); }
         public string OutputFolder { get => _outputFolder; set => Set(ref _outputFolder, value); }
         public string OutputFileName { get => _outputFileName; set => Set(ref _outputFileName, value); }
@@ -147,8 +147,42 @@ namespace PipelineConfigWpf
         // on conserve les formats CSV/XML tels quels (pas édités visuellement pour l'instant)
         private PipelineCsvFormat _csv = new PipelineCsvFormat();
         private PipelineXmlFormat _xml = new PipelineXmlFormat();
-        public PipelineCsvFormat CsvFormat { get => _csv; set => _csv = value; }
-        public PipelineXmlFormat XmlFormat { get => _xml; set => _xml = value; }
+        public PipelineCsvFormat CsvFormat { get => _csv; set { _csv = value ?? new PipelineCsvFormat(); RaiseCsvXml(); } }
+        public PipelineXmlFormat XmlFormat { get => _xml; set { _xml = value ?? new PipelineXmlFormat(); RaiseCsvXml(); } }
+
+        // --- CSV format (bindable, délègue à l'objet CsvFormat du modèle) ---
+        public string CsvDelimiter        { get => _csv.Delimiter;        set { _csv.Delimiter = value; OnPropertyChanged(nameof(CsvDelimiter)); } }
+        public string CsvQuote            { get => _csv.Quote;            set { _csv.Quote = value; OnPropertyChanged(nameof(CsvQuote)); } }
+        public bool   CsvQuoteAllFields   { get => _csv.QuoteAllFields;   set { _csv.QuoteAllFields = value; OnPropertyChanged(nameof(CsvQuoteAllFields)); } }
+        public string CsvDecimalSeparator { get => _csv.DecimalSeparator; set { _csv.DecimalSeparator = value; OnPropertyChanged(nameof(CsvDecimalSeparator)); } }
+        public string CsvDateFormat       { get => _csv.DateFormat;       set { _csv.DateFormat = value; OnPropertyChanged(nameof(CsvDateFormat)); } }
+        public bool   CsvWriteHeader      { get => _csv.WriteHeader;      set { _csv.WriteHeader = value; OnPropertyChanged(nameof(CsvWriteHeader)); } }
+        public string CsvEncoding         { get => _csv.Encoding;         set { _csv.Encoding = value; OnPropertyChanged(nameof(CsvEncoding)); } }
+
+        // --- XML format (bindable, délègue à l'objet XmlFormat du modèle) ---
+        public string XmlRootElement      { get => _xml.RootElement;      set { _xml.RootElement = value; OnPropertyChanged(nameof(XmlRootElement)); } }
+        public string XmlRecordElement    { get => _xml.RecordElement;    set { _xml.RecordElement = value; OnPropertyChanged(nameof(XmlRecordElement)); } }
+        public string XmlLineElement      { get => _xml.LineElement;      set { _xml.LineElement = value; OnPropertyChanged(nameof(XmlLineElement)); } }
+        public string XmlNamespace        { get => _xml.Namespace;        set { _xml.Namespace = value; OnPropertyChanged(nameof(XmlNamespace)); } }
+        public string XmlLineWrapper      { get => _xml.LineWrapper;      set { _xml.LineWrapper = value; OnPropertyChanged(nameof(XmlLineWrapper)); } }
+        public string XmlDecimalSeparator { get => _xml.DecimalSeparator; set { _xml.DecimalSeparator = value; OnPropertyChanged(nameof(XmlDecimalSeparator)); } }
+        public string XmlDateFormat       { get => _xml.DateFormat;       set { _xml.DateFormat = value; OnPropertyChanged(nameof(XmlDateFormat)); } }
+        public string XmlEncoding         { get => _xml.Encoding;         set { _xml.Encoding = value; OnPropertyChanged(nameof(XmlEncoding)); } }
+
+        // vrai si la sortie est en XML (pour afficher la bonne section de format)
+        public bool IsXmlOutput => string.Equals(_outputFormat, "Xml", System.StringComparison.OrdinalIgnoreCase);
+        public bool IsCsvOutput => !IsXmlOutput;
+
+        private void RaiseCsvXml()
+        {
+            OnPropertyChanged(nameof(CsvDelimiter)); OnPropertyChanged(nameof(CsvQuote));
+            OnPropertyChanged(nameof(CsvQuoteAllFields)); OnPropertyChanged(nameof(CsvDecimalSeparator));
+            OnPropertyChanged(nameof(CsvDateFormat)); OnPropertyChanged(nameof(CsvWriteHeader));
+            OnPropertyChanged(nameof(CsvEncoding));
+            OnPropertyChanged(nameof(XmlRootElement)); OnPropertyChanged(nameof(XmlRecordElement));
+            OnPropertyChanged(nameof(XmlLineElement)); OnPropertyChanged(nameof(XmlNamespace)); OnPropertyChanged(nameof(XmlLineWrapper)); OnPropertyChanged(nameof(XmlDecimalSeparator));
+            OnPropertyChanged(nameof(XmlDateFormat)); OnPropertyChanged(nameof(XmlEncoding));
+        }
 
         // --- transport de sortie ---
         private string _transportType = "Fs";
